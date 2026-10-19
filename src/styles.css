@@ -363,7 +363,7 @@ header {
   font-size: 0.941rem;
 }
 .reminder-row label { display: flex; align-items: center; gap: 10px; cursor: pointer; min-height: 44px; }
-.reminder-right { display: flex; align-items: center; gap: 12px; margin-inline-start: auto; }
+.reminder-right { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; column-gap: 16px; margin-inline-start: auto; }
 .reminder-row a {
   color: var(--tint);
   font-weight: 600;

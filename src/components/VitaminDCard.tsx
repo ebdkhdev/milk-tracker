@@ -1,7 +1,7 @@
 import { formatTime } from '#/lib/dates'
 import type { Daily } from '#/lib/db'
 import { useFormat } from '#/lib/format'
-import { buildIcsUrl, notificationsAvailable } from '#/lib/reminder'
+import { buildGoogleCalendarUrl, buildIcsUrl, notificationsAvailable } from '#/lib/reminder'
 import type { Reminder } from '#/lib/settings'
 
 type Props = {
@@ -65,6 +65,9 @@ export function VitaminDCard({ record, viewingToday, due, reminder, onToggle, on
             />
             <a href={buildIcsUrl(reminder.time, t)} id="reminder-ics" download={t('icsFile')}>
               {t('calendar')}
+            </a>
+            <a href={buildGoogleCalendarUrl(reminder.time, t)} id="reminder-gcal" target="_blank" rel="noopener noreferrer">
+              {t('googleCalendar')}
             </a>
           </div>
         </div>

@@ -34,11 +34,14 @@ export function showReminderNotification(t: T) {
 
 // Daily calendar event with an alarm: the fallback when the app is closed.
 // The UID keeps the legacy "@suivi-lait" domain so re-importing does not duplicate events.
-export function buildIcsUrl(time: string, t: T) {
+function hhmm(time: string) {
   const parts = time.split(':')
   const h = parseInt(parts[0], 10), m = parseInt(parts[1], 10)
-  const hh = String(isNaN(h) ? 8 : h).padStart(2, '0')
-  const mm = String(isNaN(m) ? 0 : m).padStart(2, '0')
+  return [String(isNaN(h) ? 8 : h).padStart(2, '0'), String(isNaN(m) ? 0 : m).padStart(2, '0')]
+}
+
+export function buildIcsUrl(time: string, t: T) {
+  const [hh, mm] = hhmm(time)
   const start = todayStr(new Date()).replace(/-/g, '') + 'T' + hh + mm + '00'
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
   const ics = [
@@ -62,4 +65,25 @@ export function buildIcsUrl(time: string, t: T) {
     'END:VCALENDAR',
   ].join('\r\n')
   return 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics)
+}
+
+// Same daily event as a Google Calendar template link (opens in the browser, no file).
+// Dates without "Z" are read in the ctz time zone; the alert is the calendar's default one.
+export function buildGoogleCalendarUrl(time: string, t: T) {
+  const [hh, mm] = hhmm(time)
+  const day = todayStr(new Date()).replace(/-/g, '')
+  const end = new Date(2000, 0, 1, parseInt(hh, 10), parseInt(mm, 10) + 5)
+  const endHm = String(end.getHours()).padStart(2, '0') + String(end.getMinutes()).padStart(2, '0')
+  // An end past midnight would need the next day; keep the event within the start day instead.
+  const dates = day + 'T' + hh + mm + '00/' + day + 'T' + (endHm > hh + mm ? endHm : '2359') + '00'
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: t('icsSummary'),
+    details: t('icsDesc'),
+    dates,
+    recur: 'RRULE:FREQ=DAILY',
+  })
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  if (tz) params.set('ctz', tz)
+  return 'https://calendar.google.com/calendar/render?' + params.toString()
 }
