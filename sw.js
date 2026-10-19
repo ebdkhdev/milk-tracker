@@ -1,4 +1,4 @@
-const CACHE = "suivi-lait-v5";
+const CACHE = "milk-tracker-v6";
 const ASSETS = ["/", "/index.html", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {

@@ -1,6 +1,7 @@
 {
-  "name": "Suivi lait",
-  "short_name": "Suivi lait",
+  "name": "Milk Tracker",
+  "short_name": "Milk Tracker",
+  "description": "Log your baby's bottle feeds, daily totals and vitamin D, offline on your device.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

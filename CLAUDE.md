@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-"Suivi lait" is a French-language PWA for logging a baby's bottle feeds. It is a static site with no build step, no package.json, no tests, and no dependencies beyond Google Fonts. The entire app lives in `index.html` (inline CSS + inline JS in a single IIFE).
+"Milk Tracker" (formerly "Suivi lait") is a currently French-language PWA for logging a baby's bottle feeds. It is a static site with no build step, no package.json, no tests, and no dependencies beyond Google Fonts. The entire app lives in `index.html` (inline CSS + inline JS in a single IIFE).
 
 ## Commands
 
@@ -20,9 +20,11 @@ Deploy to production (project is already linked via `.vercel/project.json`):
 npx vercel deploy --prod --yes
 ```
 
-Production URL: https://suivi-lait.vercel.app. Deployment Protection (Vercel Authentication) is deliberately disabled on the project so the link is public; do not re-enable it.
+Production URL: https://suivi-lait.vercel.app (the Vercel project keeps its old name on purpose: users' data is tied to this origin, so changing the domain would leave them with an empty app). Deployment Protection (Vercel Authentication) is deliberately disabled on the project so the link is public; do not re-enable it.
 
 ## Architecture
+
+**Legacy identifiers.** The storage keys below (`suivi-lait-db`, `suivi-lait-unit-v1`, `suivi-lait-reminder-v1`, `suivi-lait-data-v1`) and the `.ics` `UID ...@suivi-lait` keep the old name deliberately. Renaming them would orphan existing users' data or duplicate calendar events. Do not rename them.
 
 **Data model.** IndexedDB database `suivi-lait-db` (version 2) with two object stores:
 - `feeds` (keyPath `id`, index `by_date` on `date`): one record per bottle, `{ id, date: "YYYY-MM-DD", ml: number, time: ISO string }`. Millilitres are the canonical unit; ounces are a display-only conversion (`ML_PER_OZ = 29.5735`).
@@ -42,6 +44,6 @@ The chosen unit is persisted in `localStorage` under `suivi-lait-unit-v1`.
 
 **Vitamin D reminder.** Settings live in `localStorage` under `suivi-lait-reminder-v1` (`{ enabled, time: "HH:MM", lastNotified: "YYYY-MM-DD" }`), so they are per device. `checkReminder()` runs on load, every minute, on visibility change, and after each `renderVitaminD()`; it adds the `due` class to the card once the time has passed and today's vitamin D is not given, and fires at most one browser notification per day (via the service worker's `showNotification` when available). There is no push backend: notifications only fire while the app is open. The "Calendrier" link builds a `data:` `.ics` with `RRULE:FREQ=DAILY` and a `VALARM` as the app-closed fallback. `sw.js` handles `notificationclick` by focusing or opening the app.
 
-**Offline / PWA.** `sw.js` precaches the shell under cache name `suivi-lait-v1`, uses network-first for navigations (falls back to cached `/index.html`) and cache-first for everything else. `vercel.json` sets `Cache-Control: no-cache` on `sw.js` so updates are picked up, and sets the manifest content type. When changing cached assets, bump the `CACHE` name in `sw.js` so old caches are purged on activate.
+**Offline / PWA.** `sw.js` precaches the shell under cache name `milk-tracker-vN`, uses network-first for navigations (falls back to cached `/index.html`) and cache-first for everything else. `vercel.json` sets `Cache-Control: no-cache` on `sw.js` so updates are picked up, and sets the manifest content type. When changing cached assets, bump the `CACHE` name in `sw.js` so old caches are purged on activate.
 
 **Theming.** Colors are CSS custom properties on `:root`, with a dark variant applied both via `prefers-color-scheme` and via `[data-theme="dark"]`. All UI strings are French.
