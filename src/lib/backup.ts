@@ -3,16 +3,17 @@ import { DEFAULT_TIERS_ML } from './baby'
 import type { Baby } from './baby'
 import type { Daily, Feed } from './db'
 import { newId } from './db'
+import { sanitizeQuick } from './settings'
 
 const APP = 'milk-tracker'
 const VERSION = 1
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 
-export type Backup = { app: string; version: number; exportedAt: string; feeds: Feed[]; daily: Daily[]; baby: Baby }
-export type Parsed = { feeds: Feed[]; daily: Daily[]; baby: Baby | null; skipped: number }
+export type Backup = { app: string; version: number; exportedAt: string; feeds: Feed[]; daily: Daily[]; baby: Baby; quick: number[] }
+export type Parsed = { feeds: Feed[]; daily: Daily[]; baby: Baby | null; quick: number[] | null; skipped: number }
 
-export function buildBackup(feeds: Feed[], daily: Daily[], baby: Baby): string {
-  const data: Backup = { app: APP, version: VERSION, exportedAt: new Date().toISOString(), feeds, daily, baby }
+export function buildBackup(feeds: Feed[], daily: Daily[], baby: Baby, quick: number[]): string {
+  const data: Backup = { app: APP, version: VERSION, exportedAt: new Date().toISOString(), feeds, daily, baby, quick }
   return JSON.stringify(data, null, 2)
 }
 
@@ -50,7 +51,8 @@ export function parseBackup(text: string): Parsed | null {
       tiersMl: DEFAULT_TIERS_ML.map((def, i) => (Number(tiers[i]) > 0 ? Number(tiers[i]) : def)),
     }
   }
-  return { feeds, daily, baby, skipped }
+  const quick = Array.isArray(data.quick) ? sanitizeQuick(data.quick) : null
+  return { feeds, daily, baby, quick, skipped }
 }
 
 // On phones, the share sheet lets people save the file to iCloud Drive / Files or send it by mail.

@@ -1,15 +1,15 @@
 import { useState } from 'react'
-import { QUICK_AMOUNTS_ML } from '#/lib/settings'
 import { useFormat } from '#/lib/format'
 
 type Props = {
   past: boolean
+  quick: number[]
   customTime: string
   onCustomTime: (v: string) => void
   onAdd: (ml: number) => void
 }
 
-export function AddFeed({ past, customTime, onCustomTime, onAdd }: Props) {
+export function AddFeed({ past, quick, customTime, onCustomTime, onAdd }: Props) {
   const { t, mlToDisplay, unitLabel, displayToMl } = useFormat()
   const [amount, setAmount] = useState('')
 
@@ -24,8 +24,8 @@ export function AddFeed({ past, customTime, onCustomTime, onAdd }: Props) {
     <>
       <p className="section-label">{t('quickAdd')}</p>
       <div className="quick-grid" id="quick-grid">
-        {QUICK_AMOUNTS_ML.map((ml) => (
-          <button key={ml} onClick={() => onAdd(ml)}>
+        {quick.map((ml, i) => (
+          <button key={i} onClick={() => onAdd(ml)}>
             {mlToDisplay(ml) + ' ' + unitLabel}
           </button>
         ))}

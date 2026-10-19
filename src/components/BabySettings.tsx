@@ -2,17 +2,20 @@ import { DEFAULT_TIERS_ML, TIER_STARTS, formatAge, tierIndexFor } from '#/lib/ba
 import type { Baby } from '#/lib/baby'
 import { todayStr } from '#/lib/dates'
 import { useFormat } from '#/lib/format'
-import { DAILY_MIN_ML } from '#/lib/settings'
+import { DAILY_MIN_ML, MAX_FEED_ML, QUICK_AMOUNTS_ML } from '#/lib/settings'
 
 type Props = {
   baby: Baby
   onChange: (b: Baby) => void
+  quick: number[]
+  quickSuggestion: number[] | null
+  onQuick: (q: number[]) => void
   onClose: () => void
   onExport: () => void
   onImport: (file: File) => void
 }
 
-export function BabySettings({ baby, onChange, onClose, onExport, onImport }: Props) {
+export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, onClose, onExport, onImport }: Props) {
   const { t, unitLabel, mlToDisplay, displayToMl, formatAmount } = useFormat()
   const today = todayStr(new Date())
   const current = tierIndexFor(baby, today)
@@ -25,14 +28,25 @@ export function BabySettings({ baby, onChange, onClose, onExport, onImport }: Pr
     tiersMl[i] = Math.round(displayToMl(val))
     onChange({ ...baby, tiersMl })
   }
+  const setQuickAt = (i: number, raw: string) => {
+    const val = parseFloat(raw)
+    if (!val || val <= 0 || val === mlToDisplay(quick[i])) return
+    const ml = Math.round(displayToMl(val))
+    if (ml > MAX_FEED_ML) return
+    const next = quick.slice()
+    next[i] = ml
+    onQuick(next)
+  }
+  const sameAs = (a: number[] | null) => !!a && a.every((v, i) => v === quick[i])
 
   return (
     <section className="settings-card" id="settings" aria-label={t('settings')}>
       <div className="settings-head">
-        <span className="settings-title">{t('babyTitle')}</span>
+        <span className="settings-title">{t('settings')}</span>
         <button className="settings-close" id="settings-close" onClick={onClose}>{t('close')}</button>
       </div>
 
+      <p className="settings-sub settings-sub-first">{t('babyTitle')}</p>
       <label className="settings-row">
         <span>{t('birthDate')}</span>
         <span className="settings-birth">
@@ -85,6 +99,36 @@ export function BabySettings({ baby, onChange, onClose, onExport, onImport }: Pr
       >
         {t('resetTiers')}
       </button>
+
+      <p className="settings-sub">{t('quickAdd')}</p>
+      <div className="quick-edit" id="quick-edit">
+        {quick.map((ml, i) => (
+          <input
+            // remount when the unit or the stored value changes (ml/oz switch, suggestion, reset)
+            key={i + unitLabel + ml}
+            type="number"
+            inputMode="decimal"
+            min="0"
+            aria-label={t('quickSlot', { n: i + 1, unit: unitLabel })}
+            defaultValue={mlToDisplay(ml)}
+            onBlur={(e) => setQuickAt(i, e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+          />
+        ))}
+      </div>
+      <p className="settings-note">{t('quickNote', { unit: unitLabel })}</p>
+      <div className="settings-actions">
+        {quickSuggestion && !sameAs(quickSuggestion) ? (
+          <button className="settings-reset" id="quick-suggest" onClick={() => onQuick(quickSuggestion)}>
+            {t('quickSuggest', { v: quickSuggestion.map((v) => mlToDisplay(v)).join(' · ') })}
+          </button>
+        ) : null}
+        {!sameAs(QUICK_AMOUNTS_ML) ? (
+          <button className="settings-reset" id="quick-reset" onClick={() => onQuick(QUICK_AMOUNTS_ML.slice())}>
+            {t('resetTiers')}
+          </button>
+        ) : null}
+      </div>
 
       <p className="settings-sub">{t('dataTitle')}</p>
       <div className="data-row">

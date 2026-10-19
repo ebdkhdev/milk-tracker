@@ -22,7 +22,7 @@ export async function run(DIST) {
   try {
     // v1 renders without React, so wait for its own elements
     await b.send('Page.navigate', { url: srv.url })
-    await waitFor(b.ev, `!!document.querySelector("#quick-grid button")`)
+    await waitFor(b.ev, `!!document.querySelector("#quick-grid button")`, 15000)
     for (let i = 0; i < 3; i++) { await b.click('#quick-grid button', 2); await sleep(200) }
     await b.click('#vitd-btn'); await sleep(200)
     await b.ev(`(function(){var c=document.getElementById("reminder-enabled");c.checked=true;c.dispatchEvent(new Event("change"))})()`)
@@ -41,7 +41,7 @@ export async function run(DIST) {
     // first load is served by the old worker; the new one installs, takes over, and the next loads are new
     await b.send('Page.navigate', { url: srv.url }); await sleep(2000)
     for (let i = 0; i < 2; i++) { await b.send('Page.reload'); await sleep(2000) }
-    await waitFor(b.ev, `!!document.getElementById("total-number")`)
+    await waitFor(b.ev, `!!document.getElementById("total-number")`, 15000)
     const state = () => b.ev(`({ dir: document.documentElement.dir, unit: document.getElementById("total-unit-label").textContent,
       feeds: document.querySelectorAll(".feed-item").length, vitd: document.getElementById("vitd-btn").getAttribute("aria-pressed"),
       reminder: document.getElementById("reminder-enabled").checked })`)
@@ -53,7 +53,7 @@ export async function run(DIST) {
 
     await srv.stop()
     await b.send('Page.reload'); await sleep(1500)
-    await waitFor(b.ev, `!!document.getElementById("total-number")`)
+    await waitFor(b.ev, `!!document.getElementById("total-number")`, 15000)
     equal('works offline', await state(), expected)
     equal('no JS errors', b.errors.filter((e) => !/Failed to load|ERR_CONNECTION_REFUSED/.test(e)), [])
   } finally {

@@ -101,6 +101,20 @@ function makePage(send, ev) {
       Object.getOwnPropertyDescriptor(proto,"value").set.call(e,${q(v)});
       e.dispatchEvent(new Event("input",{bubbles:true})); e.dispatchEvent(new Event("change",{bubbles:true}));})()`),
     waitFor: (expr, ms) => waitFor(ev, expr, ms),
+    // puts local files into an <input type=file>, which fires its change event
+    setFiles: async (sel, files) => {
+      const { root } = await send('DOM.getDocument')
+      const { nodeId } = await send('DOM.querySelector', { nodeId: root.nodeId, selector: sel })
+      await send('DOM.setFileInputFiles', { nodeId, files })
+    },
+    // real typing into a field: click it, select its content, type, press Enter
+    type: async (sel, text, i = 0) => {
+      const r = await ev(`(function(){var e=document.querySelectorAll(${q(sel)})[${i}];e.scrollIntoView({block:"center"});var r=e.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2]})()`)
+      for (const type of ['mousePressed', 'mouseReleased']) await send('Input.dispatchMouseEvent', { type, x: r[0], y: r[1], button: 'left', clickCount: 1 })
+      await ev('document.activeElement.select()')
+      await send('Input.insertText', { text })
+      for (const type of ['keyDown', 'keyUp']) await send('Input.dispatchKeyEvent', { type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 })
+    },
     media: (features) => send('Emulation.setEmulatedMedia', { features: Object.entries(features).map(([name, value]) => ({ name, value })) }),
     screenshot: async (clip) => Buffer.from((await send('Page.captureScreenshot', { format: 'png', ...(clip ? { clip: { ...clip, scale: 1 } } : {}) })).data, 'base64'),
   }

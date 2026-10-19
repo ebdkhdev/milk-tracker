@@ -718,6 +718,10 @@ input[type="time"], input[type="date"], input[type="number"] {
 .tier-input .unit-tag { color: var(--label-2); width: 2.4rem; }
 .settings-note { color: var(--label-2); font-size: 0.765rem; margin: 8px 0 0; }
 .settings-reset { margin-top: 4px; }
+.settings-sub-first { margin-top: 4px; }
+.settings-actions { display: flex; flex-wrap: wrap; column-gap: 16px; }
+.quick-edit { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.quick-edit input { width: 100%; text-align: center; font-family: var(--font-rounded); font-weight: 600; }
 .data-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .data-btn {
   position: relative;

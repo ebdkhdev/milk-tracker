@@ -25,7 +25,7 @@ import { FormatProvider, useFormat } from '#/lib/format'
 import { RTL_LANGS, loadLang, makeT, saveLang } from '#/lib/i18n'
 import type { Lang, T, Unit } from '#/lib/i18n'
 import { notificationsAvailable, reminderIsDue, showReminderNotification } from '#/lib/reminder'
-import { loadReminder, loadUnit, saveReminder, saveUnit } from '#/lib/settings'
+import { isDefaultQuick, loadQuick, loadReminder, loadUnit, saveQuick, saveReminder, saveUnit, suggestQuick } from '#/lib/settings'
 import type { Reminder } from '#/lib/settings'
 
 // Everything depends on browser storage and the local clock: render on the client only.
@@ -46,6 +46,7 @@ function App() {
   const [unit, setUnit] = useState<Unit>(loadUnit)
   const [reminder, setReminderState] = useState<Reminder>(loadReminder)
   const [baby, setBabyState] = useState<Baby>(loadBaby)
+  const [quick, setQuickState] = useState<number[]>(loadQuick)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [viewDate, setViewDate] = useState(() => new Date())
   const [customTime, setCustomTime] = useState('')
@@ -188,7 +189,7 @@ function App() {
 
   // Built from the data already in state so share() stays inside the click (required by Safari).
   const exportData = () => {
-    const text = buildBackup(allFeeds, allDaily || [], baby)
+    const text = buildBackup(allFeeds, allDaily || [], baby, quick)
     shareOrDownload(text, t('exportFile', { date: todayStr(new Date()) }))
       .then((r) => { if (r === 'done') showToast(t('exported')) })
       .catch((e) => console.error('Erreur export', e))
@@ -203,6 +204,7 @@ function App() {
         return dbImport(parsed.feeds, parsed.daily).then(() => {
           // a new phone (no birth date yet) takes the file's baby settings; otherwise this phone's settings win
           if (parsed.baby && !baby.birthDate) { saveBaby(parsed.baby); setBabyState(parsed.baby) }
+          if (parsed.quick && isDefaultQuick(quick)) { saveQuick(parsed.quick); setQuickState(parsed.quick) }
           bump()
           showToast(t('imported', { n: parsed.feeds.length }) + (parsed.skipped ? t('importSkipped', { n: parsed.skipped }) : ''))
         })
@@ -242,6 +244,9 @@ function App() {
           <BabySettings
             baby={baby}
             onChange={(b) => { saveBaby(b); setBabyState(b) }}
+            quick={quick}
+            quickSuggestion={suggestQuick(allFeeds, now)}
+            onQuick={(q) => { saveQuick(q); setQuickState(q) }}
             onClose={() => setSettingsOpen(false)}
             onExport={exportData}
             onImport={importData}
@@ -265,7 +270,7 @@ function App() {
           onToggle={toggleVitaminD}
           onReminder={setReminder}
         />
-        <AddFeed past={!viewingToday} customTime={customTime} onCustomTime={setCustomTime} onAdd={addEntry} />
+        <AddFeed past={!viewingToday} quick={quick} customTime={customTime} onCustomTime={setCustomTime} onAdd={addEntry} />
         <FeedList entries={entries} editingId={editingId} onEdit={setEditingId} onSave={updateEntry} onDelete={removeEntry} />
         <Stats
           rows={rows}
