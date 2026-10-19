@@ -13,7 +13,7 @@
 <link rel="icon" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #f6f5f1;
@@ -67,7 +67,7 @@
   body {
     background: var(--bg);
     color: var(--ink);
-    font-family: 'Inter', -apple-system, sans-serif;
+    font-family: 'Inter', 'Noto Sans Arabic', -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     min-height: 100%;
   }
@@ -83,10 +83,22 @@
     margin-bottom: 22px;
   }
   .brand {
-    font-family: 'Fraunces', serif;
+    font-family: 'Fraunces', 'Noto Sans Arabic', serif;
     font-size: 19px;
     font-weight: 500;
     letter-spacing: 0.2px;
+  }
+  .header-controls { display: flex; align-items: center; gap: 8px; }
+  .lang-select {
+    border: none;
+    background: var(--surface-2);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 999px;
+    cursor: pointer;
   }
   .unit-toggle {
     display: flex;
@@ -142,17 +154,17 @@
     border: 1px solid var(--line);
   }
   .total-number {
-    font-family: 'Fraunces', serif;
+    font-family: 'Fraunces', 'Noto Sans Arabic', serif;
     font-size: 56px;
     font-weight: 600;
     color: var(--sage-deep);
     line-height: 1;
   }
   .total-unit {
-    font-family: 'Fraunces', serif;
+    font-family: 'Fraunces', 'Noto Sans Arabic', serif;
     font-size: 22px;
     color: var(--ink-soft);
-    margin-left: 4px;
+    margin-inline-start: 4px;
   }
   .total-sub {
     margin-top: 10px;
@@ -286,13 +298,13 @@
   }
   .feed-edit input[type="number"] { width: 90px; }
   .feed-edit input[type="time"] { width: 104px; }
-  .feed-edit .unit-tag { font-size: 13px; color: var(--ink-soft); margin-left: -4px; }
+  .feed-edit .unit-tag { font-size: 13px; color: var(--ink-soft); margin-inline-start: -4px; }
   .feed-edit .save, .feed-edit .cancel {
     border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif;
   }
   .feed-edit .save { background: var(--sage); color: #fff; border: 1px solid var(--sage); }
   .feed-edit .cancel { background: none; color: var(--ink-soft); border: 1px solid var(--line); }
-  .section-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px 2px; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px; margin-inline-start: 2px; }
   .section-head .section-label { margin: 0; }
   .period-toggle { display: flex; background: var(--surface-2); border-radius: 999px; padding: 3px; gap: 2px; }
   .period-toggle button {
@@ -303,12 +315,12 @@
   .period-toggle button.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
   .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
   .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 6px; text-align: center; }
-  .stat .sv { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; color: var(--ink); line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .stat .sv small { font-size: 12px; font-family: 'Inter', sans-serif; font-weight: 500; color: var(--ink-soft); margin-left: 2px; }
+  .stat .sv { font-family: 'Fraunces', 'Noto Sans Arabic', serif; font-size: 20px; font-weight: 600; color: var(--ink); line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat .sv small { font-size: 12px; font-family: 'Inter', sans-serif; font-weight: 500; color: var(--ink-soft); margin-inline-start: 2px; }
   .stat .sl { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
   .stat.good .sv { color: var(--sage-deep); }
   .stat.bad .sv { color: var(--peach-deep); }
-  .stats-note { font-size: 11px; color: var(--ink-soft); margin: 0 0 14px 2px; }
+  .stats-note { font-size: 11px; color: var(--ink-soft); margin: 0 0 14px; margin-inline-start: 2px; }
   .history-row { cursor: pointer; border-radius: 6px; padding: 1px 4px; margin: 0 -4px; }
   .history-row:hover { background: var(--surface-2); }
   .history-row.viewing .hlabel { color: var(--ink); font-weight: 600; }
@@ -383,7 +395,8 @@
   .section-label {
     font-size: 12px;
     color: var(--ink-soft);
-    margin: 0 0 10px 2px;
+    margin: 0 0 10px;
+    margin-inline-start: 2px;
   }
   .feed-list {
     list-style: none;
@@ -403,7 +416,7 @@
     padding: 12px 14px;
   }
   .feed-item .amt { font-weight: 600; font-size: 15px; }
-  .feed-item .time { color: var(--ink-soft); font-size: 13px; margin-left: 10px; }
+  .feed-item .time { color: var(--ink-soft); font-size: 13px; margin-inline-start: 10px; }
   .feed-item .left { display: flex; align-items: baseline; }
   .feed-item .del {
     border: none;
@@ -428,7 +441,7 @@
   .history-row .hlabel { width: 46px; flex-shrink: 0; }
   .history-row .bar-track { flex: 1; height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
   .history-row .bar-fill { height: 100%; background: var(--peach-deep); border-radius: 999px; }
-  .history-row .hval { width: 56px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .history-row .hval { width: 56px; text-align: end; flex-shrink: 0; font-variant-numeric: tabular-nums; }
   .history-row.today .hval { color: var(--ink); font-weight: 600; }
   .install-banner {
     display: none;
@@ -453,6 +466,9 @@
     cursor: pointer;
     white-space: nowrap;
   }
+  [dir="rtl"] .day-nav button { transform: scaleX(-1); }
+  .history-row .hlabel { white-space: nowrap; }
+  :root[lang="ar"] .history-row .hlabel { width: 76px; }
   footer { text-align: center; color: var(--ink-soft); font-size: 11px; margin-top: 34px; }
 </style>
 </head>
@@ -461,74 +477,81 @@
 
   <header>
     <div class="brand">🍼 Milk Tracker</div>
-    <div class="unit-toggle" role="group" aria-label="Unité">
-      <button id="unit-ml" class="active">ml</button>
-      <button id="unit-oz">oz</button>
+    <div class="header-controls">
+      <select id="lang-select" class="lang-select" data-i18n-aria="language">
+        <option value="fr" lang="fr">FR</option>
+        <option value="en" lang="en">EN</option>
+        <option value="ar" lang="ar">عربي</option>
+      </select>
+      <div class="unit-toggle" role="group" data-i18n-aria="unitGroup">
+        <button id="unit-ml" class="active">ml</button>
+        <button id="unit-oz">oz</button>
+      </div>
     </div>
   </header>
 
   <div class="install-banner" id="install-banner">
-    <span>Installer sur l'écran d'accueil ?</span>
-    <button id="install-btn">Installer</button>
+    <span data-i18n="installPrompt"></span>
+    <button id="install-btn" data-i18n="install"></button>
   </div>
 
   <div class="day-nav">
-    <button id="prev-day" aria-label="Jour précédent">‹</button>
-    <div class="day-label" id="day-label" role="button" tabindex="0" title="Choisir une date">Aujourd'hui</div>
-    <input type="date" class="day-picker" id="day-picker" aria-label="Choisir une date">
-    <button id="next-day" aria-label="Jour suivant">›</button>
+    <button id="prev-day" data-i18n-aria="prevDay">‹</button>
+    <div class="day-label" id="day-label" role="button" tabindex="0" data-i18n-title="pickDate"></div>
+    <input type="date" class="day-picker" id="day-picker" data-i18n-aria="pickDate">
+    <button id="next-day" data-i18n-aria="nextDay">›</button>
   </div>
 
   <div class="total-card">
-    <div><span class="total-number" id="total-number">0</span><span class="total-unit" id="total-unit-label">ml</span></div>
-    <div class="total-sub" id="total-sub">Aucun biberon pour l'instant</div>
+    <div><span class="total-number" id="total-number">0</span><span class="total-unit" id="total-unit-label"></span></div>
+    <div class="total-sub" id="total-sub"></div>
     <div class="goal-track" aria-hidden="true"><div class="goal-fill" id="goal-fill"></div></div>
-    <div class="goal-meta"><span>0</span><span id="goal-target">min. 600 ml</span></div>
+    <div class="goal-meta"><span>0</span><span id="goal-target"></span></div>
     <div class="goal-status" id="goal-status"></div>
   </div>
 
   <div class="vitd-card" id="vitd-card">
     <div class="vitd-text">
-      <span class="vitd-title" id="vitd-title">Vitamine D</span>
-      <span class="vitd-sub" id="vitd-sub">Pas encore donnée aujourd'hui</span>
+      <span class="vitd-title" id="vitd-title" data-i18n="vitD"></span>
+      <span class="vitd-sub" id="vitd-sub"></span>
     </div>
-    <button id="vitd-btn" aria-pressed="false">À donner</button>
+    <button id="vitd-btn" aria-pressed="false"></button>
     <div class="reminder-row">
-      <label><input type="checkbox" id="reminder-enabled"> Rappel chaque matin</label>
+      <label><input type="checkbox" id="reminder-enabled"> <span data-i18n="reminderDaily"></span></label>
       <div class="reminder-right">
-        <input type="time" id="reminder-time" value="08:00" aria-label="Heure du rappel">
-        <a href="#" id="reminder-ics" download="rappel-vitamine-d.ics">Calendrier</a>
+        <input type="time" id="reminder-time" value="08:00" data-i18n-aria="reminderTime">
+        <a href="#" id="reminder-ics" data-i18n="calendar"></a>
       </div>
     </div>
     <div class="reminder-note" id="reminder-note"></div>
   </div>
 
-  <p class="section-label">Ajout rapide</p>
+  <p class="section-label" data-i18n="quickAdd"></p>
   <div class="quick-grid" id="quick-grid"></div>
 
   <div class="custom-row">
-    <input type="number" id="custom-amount" placeholder="Quantité personnalisée" inputmode="decimal" min="0">
-    <input type="time" id="custom-time" aria-label="Heure du biberon">
-    <button id="custom-add">Ajouter</button>
+    <input type="number" id="custom-amount" data-i18n-placeholder="customPlaceholder" inputmode="decimal" min="0">
+    <input type="time" id="custom-time" data-i18n-aria="feedTime">
+    <button id="custom-add" data-i18n="add"></button>
   </div>
 
-  <p class="section-label">Biberons du jour</p>
+  <p class="section-label" data-i18n="todaysFeeds"></p>
   <ul class="feed-list" id="feed-list"></ul>
 
   <div class="section-head">
-    <p class="section-label">Statistiques</p>
-    <div class="period-toggle" role="group" aria-label="Période">
-      <button id="period-7" class="active">7 j</button>
-      <button id="period-30">30 j</button>
+    <p class="section-label" data-i18n="stats"></p>
+    <div class="period-toggle" role="group" data-i18n-aria="period">
+      <button id="period-7" class="active" data-i18n="days7"></button>
+      <button id="period-30" data-i18n="days30"></button>
     </div>
   </div>
   <div class="stats-grid" id="stats-grid"></div>
   <p class="stats-note" id="stats-note"></p>
 
-  <p class="section-label" id="history-label">Historique · touche un jour pour l'ouvrir · trait = minimum 600 ml · point vert = vitamine D</p>
+  <p class="section-label" id="history-label"></p>
   <div class="history" id="history"></div>
 
-  <footer>Données stockées localement (IndexedDB) sur cet appareil.</footer>
+  <footer data-i18n="footer"></footer>
 </div>
 
 <script>
@@ -716,6 +739,280 @@
     try { localStorage.setItem(REMINDER_KEY, JSON.stringify(r)); } catch (e) {}
   }
 
+  // ---------- i18n ----------
+  var LANG_KEY = "suivi-lait-lang-v1";
+  var LANGS = ["fr", "en", "ar"];
+  var RTL_LANGS = ["ar"];
+  // "ar-u-nu-latn" keeps Western digits in dates, matching the numbers we concatenate ourselves
+  var LOCALES = { fr: "fr-FR", en: "en-GB", ar: "ar-u-nu-latn" };
+  // A value is a string with {placeholders}, or an object of Intl.PluralRules categories keyed on vars.n
+  var STRINGS = {
+    fr: {
+      language: "Langue",
+      unitGroup: "Unité",
+      unit_ml: "ml",
+      unit_oz: "oz",
+      installPrompt: "Installer sur l'écran d'accueil ?",
+      install: "Installer",
+      prevDay: "Jour précédent",
+      nextDay: "Jour suivant",
+      pickDate: "Choisir une date",
+      today: "Aujourd'hui",
+      todayShort: "Auj.",
+      yesterday: "Hier",
+      noFeedsYet: "Aucun biberon pour l'instant",
+      bottles: { one: "{n} biberon", other: "{n} biberons" },
+      minTarget: "min. {v}",
+      goalReached: "✓ Minimum atteint",
+      goalReachedExtra: "✓ Minimum atteint (+{v})",
+      goalRemaining: "Encore {v} pour atteindre le minimum",
+      vitD: "Vitamine D",
+      vitdNotYetToday: "Pas encore donnée aujourd'hui",
+      vitdNotGiven: "Non donnée ce jour",
+      vitdGivenAt: "Donnée à {time}",
+      vitdGiven: "Donnée",
+      vitdBtnGive: "À donner",
+      vitdBtnDone: "✓ Donnée",
+      vitdDotGiven: "Vitamine D donnée",
+      vitdDotNot: "Vitamine D non donnée",
+      reminderDue: "⏰ Rappel : pas encore donnée ce matin",
+      reminderDaily: "Rappel chaque matin",
+      reminderTime: "Heure du rappel",
+      calendar: "Calendrier",
+      icsFile: "rappel-vitamine-d.ics",
+      icsSummary: "Vitamine D 💊",
+      icsDesc: "Donner la vitamine D au bébé puis la cocher dans Milk Tracker.",
+      notifBody: "Pense à donner la vitamine D ce matin.",
+      noteUnsupported: "Ce navigateur ne peut pas afficher de notifications ; le rappel s'affiche dans l'app. Utilise « Calendrier » pour une alerte sur le téléphone.",
+      noteDenied: "Notifications refusées dans le navigateur. Le rappel s'affiche dans l'app ; utilise « Calendrier » pour une alerte sur le téléphone.",
+      noteOk: "Le rappel s'affiche dans l'app et en notification quand elle est ouverte. Pour une alerte même app fermée, ajoute-le au calendrier.",
+      quickAdd: "Ajout rapide",
+      customPlaceholder: "Quantité personnalisée",
+      feedTime: "Heure du biberon",
+      add: "Ajouter",
+      todaysFeeds: "Biberons du jour",
+      emptyDay: "Aucun biberon enregistré pour cette journée.",
+      amount: "Quantité",
+      time: "Heure",
+      save: "Enregistrer",
+      cancel: "Annuler",
+      edit: "Modifier",
+      del: "Supprimer",
+      stats: "Statistiques",
+      period: "Période",
+      days7: "7 j",
+      days30: "30 j",
+      statsEmpty: "Aucun biberon enregistré sur les {n} derniers jours.",
+      statAvgDay: "moyenne / jour",
+      statDaysReached: "jours ≥ {v}",
+      statPerDay: "biberons / jour",
+      statAvgBottle: "moyenne / biberon",
+      statVitd: "jours vitamine D",
+      statBest: "record · {date}",
+      statsNote: {
+        one: "Moyennes calculées sur {n} jour renseigné sur {total}.",
+        other: "Moyennes calculées sur {n} jours renseignés sur {total}."
+      },
+      historyLabel: "Historique · touche un jour pour l'ouvrir · trait = minimum {v} · point vert = vitamine D",
+      openDay: "Ouvrir le {date}",
+      minMarker: "Minimum {v}",
+      footer: "Données stockées localement (IndexedDB) sur cet appareil."
+    },
+    en: {
+      language: "Language",
+      unitGroup: "Unit",
+      unit_ml: "ml",
+      unit_oz: "oz",
+      installPrompt: "Add to home screen?",
+      install: "Install",
+      prevDay: "Previous day",
+      nextDay: "Next day",
+      pickDate: "Pick a date",
+      today: "Today",
+      todayShort: "Today",
+      yesterday: "Yesterday",
+      noFeedsYet: "No bottles yet",
+      bottles: { one: "{n} bottle", other: "{n} bottles" },
+      minTarget: "min. {v}",
+      goalReached: "✓ Minimum reached",
+      goalReachedExtra: "✓ Minimum reached (+{v})",
+      goalRemaining: "{v} more to reach the minimum",
+      vitD: "Vitamin D",
+      vitdNotYetToday: "Not given yet today",
+      vitdNotGiven: "Not given that day",
+      vitdGivenAt: "Given at {time}",
+      vitdGiven: "Given",
+      vitdBtnGive: "Mark given",
+      vitdBtnDone: "✓ Given",
+      vitdDotGiven: "Vitamin D given",
+      vitdDotNot: "Vitamin D not given",
+      reminderDue: "⏰ Reminder: not given yet this morning",
+      reminderDaily: "Remind me every morning",
+      reminderTime: "Reminder time",
+      calendar: "Calendar",
+      icsFile: "vitamin-d-reminder.ics",
+      icsSummary: "Vitamin D 💊",
+      icsDesc: "Give the baby vitamin D, then tick it in Milk Tracker.",
+      notifBody: "Remember to give vitamin D this morning.",
+      noteUnsupported: "This browser can't show notifications; the reminder appears in the app. Use \"Calendar\" for an alert on your phone.",
+      noteDenied: "Notifications are blocked in the browser. The reminder appears in the app; use \"Calendar\" for an alert on your phone.",
+      noteOk: "The reminder appears in the app, and as a notification while it is open. For an alert even when the app is closed, add it to your calendar.",
+      quickAdd: "Quick add",
+      customPlaceholder: "Custom amount",
+      feedTime: "Bottle time",
+      add: "Add",
+      todaysFeeds: "Bottles of the day",
+      emptyDay: "No bottles logged for this day.",
+      amount: "Amount",
+      time: "Time",
+      save: "Save",
+      cancel: "Cancel",
+      edit: "Edit",
+      del: "Delete",
+      stats: "Statistics",
+      period: "Period",
+      days7: "7 d",
+      days30: "30 d",
+      statsEmpty: "No bottles logged in the last {n} days.",
+      statAvgDay: "average / day",
+      statDaysReached: "days ≥ {v}",
+      statPerDay: "bottles / day",
+      statAvgBottle: "average / bottle",
+      statVitd: "vitamin D days",
+      statBest: "best · {date}",
+      statsNote: {
+        one: "Averages over {n} logged day out of {total}.",
+        other: "Averages over {n} logged days out of {total}."
+      },
+      historyLabel: "History · tap a day to open it · line = {v} minimum · green dot = vitamin D",
+      openDay: "Open {date}",
+      minMarker: "Minimum {v}",
+      footer: "Data stored locally (IndexedDB) on this device."
+    },
+    ar: {
+      language: "اللغة",
+      unitGroup: "الوحدة",
+      unit_ml: "مل",
+      unit_oz: "أونصة",
+      installPrompt: "التثبيت على الشاشة الرئيسية؟",
+      install: "تثبيت",
+      prevDay: "اليوم السابق",
+      nextDay: "اليوم التالي",
+      pickDate: "اختيار تاريخ",
+      today: "اليوم",
+      todayShort: "اليوم",
+      yesterday: "أمس",
+      noFeedsYet: "لا توجد رضعات بعد",
+      bottles: { one: "رضعة واحدة", two: "رضعتان", few: "{n} رضعات", many: "{n} رضعة", other: "{n} رضعة" },
+      minTarget: "الحد الأدنى {v}",
+      goalReached: "✓ تم بلوغ الحد الأدنى",
+      goalReachedExtra: "✓ تم بلوغ الحد الأدنى (+{v})",
+      goalRemaining: "يتبقى {v} لبلوغ الحد الأدنى",
+      vitD: "فيتامين د",
+      vitdNotYetToday: "لم يُعطَ بعد اليوم",
+      vitdNotGiven: "لم يُعطَ في هذا اليوم",
+      vitdGivenAt: "أُعطي الساعة {time}",
+      vitdGiven: "أُعطي",
+      vitdBtnGive: "تأكيد الإعطاء",
+      vitdBtnDone: "✓ أُعطي",
+      vitdDotGiven: "أُعطي فيتامين د",
+      vitdDotNot: "لم يُعطَ فيتامين د",
+      reminderDue: "⏰ تذكير: لم يُعطَ بعد هذا الصباح",
+      reminderDaily: "تذكير كل صباح",
+      reminderTime: "وقت التذكير",
+      calendar: "التقويم",
+      icsFile: "vitamin-d-reminder.ics",
+      icsSummary: "فيتامين د 💊",
+      icsDesc: "أعطِ فيتامين د للرضيع ثم سجّله في Milk Tracker.",
+      notifBody: "لا تنسَ إعطاء فيتامين د هذا الصباح.",
+      noteUnsupported: "هذا المتصفح لا يعرض الإشعارات؛ يظهر التذكير داخل التطبيق. استخدم «التقويم» لتنبيه على الهاتف.",
+      noteDenied: "الإشعارات مرفوضة في المتصفح. يظهر التذكير داخل التطبيق؛ استخدم «التقويم» لتنبيه على الهاتف.",
+      noteOk: "يظهر التذكير داخل التطبيق وكإشعار عندما يكون مفتوحًا. لتنبيه حتى والتطبيق مغلق، أضِفه إلى التقويم.",
+      quickAdd: "إضافة سريعة",
+      customPlaceholder: "كمية مخصّصة",
+      feedTime: "وقت الرضعة",
+      add: "إضافة",
+      todaysFeeds: "رضعات اليوم",
+      emptyDay: "لا توجد رضعات مسجّلة لهذا اليوم.",
+      amount: "الكمية",
+      time: "الوقت",
+      save: "حفظ",
+      cancel: "إلغاء",
+      edit: "تعديل",
+      del: "حذف",
+      stats: "الإحصائيات",
+      period: "الفترة",
+      days7: "7 أيام",
+      days30: "30 يومًا",
+      statsEmpty: { few: "لا توجد رضعات مسجّلة خلال آخر {n} أيام.", other: "لا توجد رضعات مسجّلة خلال آخر {n} يومًا." },
+      statAvgDay: "المعدل / يوم",
+      statDaysReached: "أيام ≥ {v}",
+      statPerDay: "رضعات / يوم",
+      statAvgBottle: "المعدل / رضعة",
+      statVitd: "أيام فيتامين د",
+      statBest: "الأعلى · {date}",
+      statsNote: {
+        one: "المعدلات محسوبة على يوم مسجّل واحد من {total}.",
+        two: "المعدلات محسوبة على يومين مسجّلين من {total}.",
+        few: "المعدلات محسوبة على {n} أيام مسجّلة من {total}.",
+        other: "المعدلات محسوبة على {n} يومًا مسجّلًا من {total}."
+      },
+      historyLabel: "السجل · المس يومًا لفتحه · الخط = الحد الأدنى {v} · النقطة الخضراء = فيتامين د",
+      openDay: "فتح يوم {date}",
+      minMarker: "الحد الأدنى {v}",
+      footer: "البيانات محفوظة محليًا (IndexedDB) على هذا الجهاز."
+    }
+  };
+
+  // Saved choice first; existing users (who already have settings) keep French; new users get their browser language.
+  function loadLang() {
+    try {
+      var saved = localStorage.getItem(LANG_KEY);
+      if (LANGS.indexOf(saved) !== -1) return saved;
+      if (localStorage.getItem("suivi-lait-unit-v1") || localStorage.getItem("suivi-lait-reminder-v1")) return "fr";
+    } catch (e) {}
+    var nav = (navigator.languages || [navigator.language || ""]);
+    for (var i = 0; i < nav.length; i++) {
+      var code = String(nav[i]).slice(0, 2).toLowerCase();
+      if (LANGS.indexOf(code) !== -1) return code;
+    }
+    return "fr";
+  }
+  function saveLang(l) {
+    try { localStorage.setItem(LANG_KEY, l); } catch (e) {}
+  }
+
+  function t(key, vars) {
+    vars = vars || {};
+    var s = STRINGS[state.lang][key];
+    if (s == null) s = STRINGS.fr[key];
+    if (typeof s === "object") {
+      var cat = "other";
+      try { cat = new Intl.PluralRules(LOCALES[state.lang]).select(vars.n); } catch (e) {}
+      s = s[cat] != null ? s[cat] : s.other;
+    }
+    return String(s).replace(/\{(\w+)\}/g, function(m, k) { return vars[k] != null ? vars[k] : m; });
+  }
+  function locale() { return LOCALES[state.lang]; }
+  function unitLabel() { return t("unit_" + state.unit); }
+
+  // Static markup: data-i18n (text), data-i18n-aria, data-i18n-title, data-i18n-placeholder
+  function applyStaticI18n() {
+    var root = document.documentElement;
+    root.lang = state.lang;
+    root.dir = RTL_LANGS.indexOf(state.lang) !== -1 ? "rtl" : "ltr";
+    [["data-i18n", null], ["data-i18n-aria", "aria-label"], ["data-i18n-title", "title"], ["data-i18n-placeholder", "placeholder"]].forEach(function(pair) {
+      document.querySelectorAll("[" + pair[0] + "]").forEach(function(el) {
+        var text = t(el.getAttribute(pair[0]));
+        if (pair[1]) el.setAttribute(pair[1], text); else el.textContent = text;
+      });
+    });
+    els.langSelect.value = state.lang;
+    els.unitMl.textContent = t("unit_ml");
+    els.unitOz.textContent = t("unit_oz");
+    els.reminderIcs.setAttribute("download", t("icsFile"));
+  }
+
   function todayStr(d) {
     var dt = d || new Date();
     var y = dt.getFullYear();
@@ -726,6 +1023,7 @@
 
   var state = {
     unit: loadUnit(),
+    lang: loadLang(),
     viewDate: new Date(),
     cacheByDate: {},
     reminder: loadReminder(),
@@ -737,6 +1035,8 @@
   var quickAmountsMl = [60, 90, 120, 150];
 
   var els = {
+    langSelect: document.getElementById("lang-select"),
+    historyLabel: document.getElementById("history-label"),
     unitMl: document.getElementById("unit-ml"),
     unitOz: document.getElementById("unit-oz"),
     prevDay: document.getElementById("prev-day"),
@@ -778,6 +1078,7 @@
     if (state.unit === "oz") return val * ML_PER_OZ;
     return val;
   }
+  function formatAmount(ml) { return mlToDisplay(ml) + " " + unitLabel(); }
   function formatTime(iso) {
     var d = new Date(iso);
     var h = String(d.getHours()).padStart(2, "0");
@@ -876,8 +1177,8 @@
 
   function showReminderNotification() {
     if (!notificationsAvailable() || Notification.permission !== "granted") return;
-    var title = "Vitamine D";
-    var opts = { body: "Pense à donner la vitamine D ce matin.", icon: "/icon-192.png", badge: "/icon-192.png", tag: "vitd-reminder" };
+    var title = t("vitD");
+    var opts = { body: t("notifBody"), icon: "/icon-192.png", badge: "/icon-192.png", tag: "vitd-reminder" };
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.ready.then(function(reg) {
         if (reg && reg.showNotification) return reg.showNotification(title, opts);
@@ -896,7 +1197,7 @@
     var due = reminderIsDue() && given === false;
     if (isToday(todayStr(state.viewDate))) {
       els.vitdCard.classList.toggle("due", due);
-      if (due) els.vitdSub.textContent = "⏰ Rappel : pas encore donnée ce matin";
+      if (due) els.vitdSub.textContent = t("reminderDue");
     }
     if (due && state.reminder.lastNotified !== today) {
       state.reminder.lastNotified = today;
@@ -912,11 +1213,11 @@
     var note = "";
     if (r.enabled) {
       if (!notificationsAvailable()) {
-        note = "Ce navigateur ne peut pas afficher de notifications ; le rappel s'affiche dans l'app. Utilise « Calendrier » pour une alerte sur le téléphone.";
+        note = t("noteUnsupported");
       } else if (Notification.permission === "denied") {
-        note = "Notifications refusées dans le navigateur. Le rappel s'affiche dans l'app ; utilise « Calendrier » pour une alerte sur le téléphone.";
+        note = t("noteDenied");
       } else {
-        note = "Le rappel s'affiche dans l'app et en notification quand elle est ouverte. Pour une alerte même app fermée, ajoute-le au calendrier.";
+        note = t("noteOk");
       }
     }
     els.reminderNote.textContent = note;
@@ -941,12 +1242,12 @@
       "DTSTART:" + start,
       "DURATION:PT5M",
       "RRULE:FREQ=DAILY",
-      "SUMMARY:Vitamine D 💊",
-      "DESCRIPTION:Donner la vitamine D au bébé puis la cocher dans Milk Tracker.",
+      "SUMMARY:" + t("icsSummary"),
+      "DESCRIPTION:" + t("icsDesc"),
       "BEGIN:VALARM",
       "TRIGGER:PT0M",
       "ACTION:DISPLAY",
-      "DESCRIPTION:Vitamine D",
+      "DESCRIPTION:" + t("vitD"),
       "END:VALARM",
       "END:VEVENT",
       "END:VCALENDAR"
@@ -973,15 +1274,15 @@
       els.vitdCard.classList.toggle("done", given);
       els.vitdCard.classList.remove("due");
       els.vitdBtn.setAttribute("aria-pressed", given ? "true" : "false");
-      els.vitdBtn.textContent = given ? "✓ Donnée" : "À donner";
+      els.vitdBtn.textContent = given ? t("vitdBtnDone") : t("vitdBtnGive");
       if (given) {
         els.vitdSub.textContent = rec.vitaminDTime
-          ? "Donnée à " + formatTime(rec.vitaminDTime)
-          : "Donnée";
+          ? t("vitdGivenAt", { time: formatTime(rec.vitaminDTime) })
+          : t("vitdGiven");
       } else {
         els.vitdSub.textContent = isToday(dateStr)
-          ? "Pas encore donnée aujourd'hui"
-          : "Non donnée ce jour";
+          ? t("vitdNotYetToday")
+          : t("vitdNotGiven");
       }
       checkReminder();
     }).catch(function(e) { console.error("Erreur lecture vitamine D", e); });
@@ -991,7 +1292,7 @@
     els.quickGrid.innerHTML = "";
     quickAmountsMl.forEach(function(ml) {
       var btn = document.createElement("button");
-      btn.textContent = mlToDisplay(ml) + " " + state.unit;
+      btn.textContent = mlToDisplay(ml) + " " + unitLabel();
       btn.addEventListener("click", function() { addEntry(ml, todayStr(state.viewDate)); });
       els.quickGrid.appendChild(btn);
     });
@@ -1003,13 +1304,13 @@
     els.dayPicker.value = dateStr;
     els.dayPicker.max = todayStr(new Date());
     if (isToday(dateStr)) {
-      els.dayLabel.textContent = "Aujourd'hui";
+      els.dayLabel.textContent = t("today");
       els.nextDay.style.visibility = "hidden";
     } else if (isYesterday(dateStr)) {
-      els.dayLabel.textContent = "Hier";
+      els.dayLabel.textContent = t("yesterday");
       els.nextDay.style.visibility = "visible";
     } else {
-      els.dayLabel.textContent = state.viewDate.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+      els.dayLabel.textContent = state.viewDate.toLocaleDateString(locale(), { day: "numeric", month: "long" });
       els.nextDay.style.visibility = "visible";
     }
   }
@@ -1025,29 +1326,29 @@
       var totalMl = entries.reduce(function(sum, e) { return sum + e.ml; }, 0);
 
       els.totalNumber.textContent = mlToDisplay(totalMl);
-      els.totalUnitLabel.textContent = state.unit;
+      els.totalUnitLabel.textContent = unitLabel();
       els.totalSub.textContent = entries.length === 0
-        ? "Aucun biberon pour l'instant"
-        : entries.length + (entries.length > 1 ? " biberons" : " biberon");
+        ? t("noFeedsYet")
+        : t("bottles", { n: entries.length });
 
       var reached = totalMl >= DAILY_MIN_ML;
       var pct = Math.min(100, Math.round((totalMl / DAILY_MIN_ML) * 100));
       els.totalCard.classList.toggle("reached", reached);
       els.totalCard.classList.toggle("under", !reached && totalMl > 0);
       els.goalFill.style.width = pct + "%";
-      els.goalTarget.textContent = "min. " + mlToDisplay(DAILY_MIN_ML) + " " + state.unit;
+      els.goalTarget.textContent = t("minTarget", { v: formatAmount(DAILY_MIN_ML) });
       if (reached) {
         var extra = totalMl - DAILY_MIN_ML;
-        els.goalStatus.textContent = "✓ Minimum atteint" + (extra > 0 ? " (+" + mlToDisplay(extra) + " " + state.unit + ")" : "");
+        els.goalStatus.textContent = extra > 0 ? t("goalReachedExtra", { v: formatAmount(extra) }) : t("goalReached");
       } else {
-        els.goalStatus.textContent = "Encore " + mlToDisplay(DAILY_MIN_ML - totalMl) + " " + state.unit + " pour atteindre le minimum";
+        els.goalStatus.textContent = t("goalRemaining", { v: formatAmount(DAILY_MIN_ML - totalMl) });
       }
 
       els.feedList.innerHTML = "";
       if (entries.length === 0) {
         var empty = document.createElement("div");
         empty.className = "empty";
-        empty.textContent = "Aucun biberon enregistré pour cette journée.";
+        empty.textContent = t("emptyDay");
         els.feedList.appendChild(empty);
       } else {
         entries.forEach(function(e) {
@@ -1060,16 +1361,16 @@
             var amtIn = document.createElement("input");
             amtIn.type = "number"; amtIn.inputMode = "decimal"; amtIn.min = "0";
             amtIn.value = mlToDisplay(e.ml);
-            amtIn.setAttribute("aria-label", "Quantité");
+            amtIn.setAttribute("aria-label", t("amount"));
             var unitTag = document.createElement("span");
-            unitTag.className = "unit-tag"; unitTag.textContent = state.unit;
+            unitTag.className = "unit-tag"; unitTag.textContent = unitLabel();
             var timeIn = document.createElement("input");
             timeIn.type = "time"; timeIn.value = formatTime(e.time);
-            timeIn.setAttribute("aria-label", "Heure");
+            timeIn.setAttribute("aria-label", t("time"));
             var save = document.createElement("button");
-            save.className = "save"; save.textContent = "Enregistrer";
+            save.className = "save"; save.textContent = t("save");
             var cancel = document.createElement("button");
-            cancel.className = "cancel"; cancel.textContent = "Annuler";
+            cancel.className = "cancel"; cancel.textContent = t("cancel");
             var doSave = function() { updateEntry(e, displayToMl(parseFloat(amtIn.value)), timeIn.value); };
             save.addEventListener("click", doSave);
             amtIn.addEventListener("keydown", function(ev) { if (ev.key === "Enter") doSave(); });
@@ -1085,7 +1386,7 @@
           left.className = "left";
           var amt = document.createElement("span");
           amt.className = "amt";
-          amt.textContent = mlToDisplay(e.ml) + " " + state.unit;
+          amt.textContent = formatAmount(e.ml);
           var time = document.createElement("span");
           time.className = "time";
           time.textContent = formatTime(e.time);
@@ -1095,11 +1396,11 @@
           actions.className = "actions";
           var edit = document.createElement("button");
           edit.className = "edit";
-          edit.textContent = "Modifier";
+          edit.textContent = t("edit");
           edit.addEventListener("click", function() { state.editingId = e.id; render(); });
           var del = document.createElement("button");
           del.className = "del";
-          del.textContent = "Supprimer";
+          del.textContent = t("del");
           del.addEventListener("click", function() { removeEntry(e.id); });
           actions.appendChild(edit);
           actions.appendChild(del);
@@ -1128,7 +1429,7 @@
     var avgDay = n ? sumMl / n : 0;
     var avgBottle = sumCount ? sumMl / sumCount : 0;
     var avgCount = n ? sumCount / n : 0;
-    var u = state.unit;
+    var u = unitLabel();
     function tile(value, unit, label, cls) {
       var t = document.createElement("div");
       t.className = "stat" + (cls ? " " + cls : "");
@@ -1141,17 +1442,17 @@
     }
     els.statsGrid.innerHTML = "";
     if (n === 0) {
-      els.statsNote.textContent = "Aucun biberon enregistré sur les " + days.length + " derniers jours.";
+      els.statsNote.textContent = t("statsEmpty", { n: days.length });
       return;
     }
-    els.statsGrid.appendChild(tile(mlToDisplay(avgDay), u, "moyenne / jour", avgDay >= DAILY_MIN_ML ? "good" : "bad"));
-    els.statsGrid.appendChild(tile(reached + "/" + n, "", "jours ≥ " + mlToDisplay(DAILY_MIN_ML) + " " + u, reached === n ? "good" : (reached < n / 2 ? "bad" : "")));
-    els.statsGrid.appendChild(tile(Math.round(avgCount * 10) / 10, "", "biberons / jour"));
-    els.statsGrid.appendChild(tile(mlToDisplay(avgBottle), u, "moyenne / biberon"));
-    els.statsGrid.appendChild(tile(vitd + "/" + days.length, "", "jours vitamine D", vitd === days.length ? "good" : (vitd < days.length / 2 ? "bad" : "")));
-    var bestLabel = bestDay ? new Date(bestDay + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "";
-    els.statsGrid.appendChild(tile(mlToDisplay(best), u, "record · " + bestLabel));
-    els.statsNote.textContent = "Moyennes calculées sur " + n + (n > 1 ? " jours renseignés" : " jour renseigné") + " sur " + days.length + ".";
+    els.statsGrid.appendChild(tile(mlToDisplay(avgDay), u, t("statAvgDay"), avgDay >= DAILY_MIN_ML ? "good" : "bad"));
+    els.statsGrid.appendChild(tile(reached + "/" + n, "", t("statDaysReached", { v: formatAmount(DAILY_MIN_ML) }), reached === n ? "good" : (reached < n / 2 ? "bad" : "")));
+    els.statsGrid.appendChild(tile(Math.round(avgCount * 10) / 10, "", t("statPerDay")));
+    els.statsGrid.appendChild(tile(mlToDisplay(avgBottle), u, t("statAvgBottle")));
+    els.statsGrid.appendChild(tile(vitd + "/" + days.length, "", t("statVitd"), vitd === days.length ? "good" : (vitd < days.length / 2 ? "bad" : "")));
+    var bestLabel = bestDay ? new Date(bestDay + "T00:00:00").toLocaleDateString(locale(), { day: "numeric", month: "short" }) : "";
+    els.statsGrid.appendChild(tile(mlToDisplay(best), u, t("statBest", { date: bestLabel })));
+    els.statsNote.textContent = t("statsNote", { n: n, total: days.length });
   }
 
   function renderHistory() {
@@ -1162,6 +1463,7 @@
       days.push(todayStr(d));
     }
     var first = days[days.length - 1];
+    els.historyLabel.textContent = t("historyLabel", { v: formatAmount(DAILY_MIN_ML) });
     Promise.all([dbGetAll(), dbGetAllDaily()]).then(function(res) {
       var byDate = {};
       res[0].forEach(function(e) {
@@ -1188,7 +1490,7 @@
         var d = new Date(dateStr + "T00:00:00");
         var row = document.createElement("div");
         row.className = "history-row" + (isToday(dateStr) ? " today" : "") + (dateStr === viewing ? " viewing" : "");
-        row.title = "Ouvrir le " + d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+        row.title = t("openDay", { date: d.toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" }) });
         row.addEventListener("click", function() {
           goToDate(new Date(dateStr + "T00:00:00"));
           window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1197,8 +1499,8 @@
         var label = document.createElement("div");
         label.className = "hlabel";
         label.textContent = isToday(dateStr)
-          ? "Auj."
-          : d.toLocaleDateString("fr-FR", { weekday: "short" }).replace(".", "") + " " + d.getDate();
+          ? t("todayShort")
+          : d.toLocaleDateString(locale(), { weekday: "short" }).replace(".", "") + " " + d.getDate();
 
         var track = document.createElement("div");
         track.className = "bar-track";
@@ -1208,18 +1510,18 @@
         track.appendChild(fill);
         var goalMark = document.createElement("div");
         goalMark.className = "bar-goal";
-        goalMark.style.left = Math.round((DAILY_MIN_ML / max) * 100) + "%";
-        goalMark.title = "Minimum " + DAILY_MIN_ML + " ml";
+        goalMark.style.insetInlineStart = Math.round((DAILY_MIN_ML / max) * 100) + "%";
+        goalMark.title = t("minMarker", { v: formatAmount(DAILY_MIN_ML) });
         track.appendChild(goalMark);
 
         var val = document.createElement("div");
         val.className = "hval";
-        val.textContent = totals[idx] > 0 ? mlToDisplay(totals[idx]) + " " + state.unit : "—";
+        val.textContent = totals[idx] > 0 ? formatAmount(totals[idx]) : "—";
 
         var dot = document.createElement("div");
         var vitGiven = !!(dailyRecs[idx] && dailyRecs[idx].vitaminD);
         dot.className = "hdot" + (vitGiven ? " done" : "");
-        dot.title = vitGiven ? "Vitamine D donnée" : "Vitamine D non donnée";
+        dot.title = vitGiven ? t("vitdDotGiven") : t("vitdDotNot");
 
         row.appendChild(label);
         row.appendChild(dot);
@@ -1238,6 +1540,15 @@
     render();
   }
 
+  function setLang(l) {
+    state.lang = LANGS.indexOf(l) !== -1 ? l : "fr";
+    saveLang(state.lang);
+    applyStaticI18n();
+    renderReminderControls();
+    render();
+  }
+
+  els.langSelect.addEventListener("change", function() { setLang(els.langSelect.value); });
   els.unitMl.addEventListener("click", function() { setUnit("ml"); });
   els.unitOz.addEventListener("click", function() { setUnit("oz"); });
 
@@ -1311,6 +1622,7 @@
       navigator.serviceWorker.register("/sw.js").catch(function(e) { console.error("SW", e); });
     });
   }
+  applyStaticI18n();
   migrateFromLocalStorage().then(function() {
     renderReminderControls();
     setUnit(state.unit);

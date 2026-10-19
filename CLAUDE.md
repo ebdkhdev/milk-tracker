@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-"Milk Tracker" (formerly "Suivi lait") is a currently French-language PWA for logging a baby's bottle feeds. It is a static site with no build step, no package.json, no tests, and no dependencies beyond Google Fonts. The entire app lives in `index.html` (inline CSS + inline JS in a single IIFE).
+"Milk Tracker" (formerly "Suivi lait") is a French / English / Arabic PWA for logging a baby's bottle feeds. It is a static site with no build step, no package.json, no tests, and no dependencies beyond Google Fonts. The entire app lives in `index.html` (inline CSS + inline JS in a single IIFE).
 
 ## Commands
 
@@ -24,7 +24,7 @@ Production URL: https://suivi-lait.vercel.app (the Vercel project keeps its old 
 
 ## Architecture
 
-**Legacy identifiers.** The storage keys below (`suivi-lait-db`, `suivi-lait-unit-v1`, `suivi-lait-reminder-v1`, `suivi-lait-data-v1`) and the `.ics` `UID ...@suivi-lait` keep the old name deliberately. Renaming them would orphan existing users' data or duplicate calendar events. Do not rename them.
+**Legacy identifiers.** The storage keys below (`suivi-lait-db`, `suivi-lait-unit-v1`, `suivi-lait-reminder-v1`, `suivi-lait-lang-v1`, `suivi-lait-data-v1`) and the `.ics` `UID ...@suivi-lait` keep the old name deliberately. Renaming them would orphan existing users' data or duplicate calendar events. Do not rename them.
 
 **Data model.** IndexedDB database `suivi-lait-db` (version 2) with two object stores:
 - `feeds` (keyPath `id`, index `by_date` on `date`): one record per bottle, `{ id, date: "YYYY-MM-DD", ml: number, time: ISO string }`. Millilitres are the canonical unit; ounces are a display-only conversion (`ML_PER_OZ = 29.5735`).
@@ -46,4 +46,6 @@ The chosen unit is persisted in `localStorage` under `suivi-lait-unit-v1`.
 
 **Offline / PWA.** `sw.js` precaches the shell under cache name `milk-tracker-vN`, uses network-first for navigations (falls back to cached `/index.html`) and cache-first for everything else. `vercel.json` sets `Cache-Control: no-cache` on `sw.js` so updates are picked up, and sets the manifest content type. When changing cached assets, bump the `CACHE` name in `sw.js` so old caches are purged on activate.
 
-**Theming.** Colors are CSS custom properties on `:root`, with a dark variant applied both via `prefers-color-scheme` and via `[data-theme="dark"]`. All UI strings are French.
+**Theming.** Colors are CSS custom properties on `:root`, with a dark variant applied both via `prefers-color-scheme` and via `[data-theme="dark"]`.
+
+**i18n.** All UI strings live in the `STRINGS` dictionary (`fr`, `en`, `ar`) and are read through `t(key, vars)`; never hardcode user-visible text. `{name}` placeholders are substituted from `vars`; a value can also be an object of `Intl.PluralRules` categories (`one`, `two`, `few`, `many`, `other`) selected by `vars.n` (Arabic needs `two`/`few`). Missing keys fall back to French. Static markup uses `data-i18n` (text), `data-i18n-aria`, `data-i18n-title` and `data-i18n-placeholder`, filled by `applyStaticI18n()`, which also sets `<html lang dir>`. The language is stored in `localStorage` under `suivi-lait-lang-v1`; without it, users who already have unit/reminder settings stay in French and new users get their browser language. Dates use `LOCALES` (`ar-u-nu-latn` keeps Western digits). Units are displayed via `unitLabel()` / `formatAmount()` (`مل` / `أونصة` in Arabic). Arabic switches the page to RTL: use logical CSS properties (`margin-inline-start`, `inset-inline-start`, `text-align: end`), not left/right. Arabic text falls back to Noto Sans Arabic (Google Fonts).
