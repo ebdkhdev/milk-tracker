@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Suivi lait</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Suivi lait">
+<meta name="theme-color" content="#5f7a63">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f5f1;
+    --surface: #ffffff;
+    --surface-2: #eef0ea;
+    --ink: #2b2e2c;
+    --ink-soft: #6b716a;
+    --line: #e2e1da;
+    --sage: #5f7a63;
+    --sage-deep: #45594a;
+    --peach: #e4b49a;
+    --peach-deep: #c98f6f;
+    --danger: #b6604f;
+    --radius: 18px;
+    --radius-sm: 10px;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1b1d1a;
+      --surface: #24261f;
+      --surface-2: #2c2e26;
+      --ink: #ece9e1;
+      --ink-soft: #9a9d92;
+      --line: #383a32;
+      --sage: #8fae93;
+      --sage-deep: #a9c6ac;
+      --peach: #d9a583;
+      --peach-deep: #e6bb9c;
+      --danger: #d98874;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1b1d1a;
+    --surface: #24261f;
+    --surface-2: #2c2e26;
+    --ink: #ece9e1;
+    --ink-soft: #9a9d92;
+    --line: #383a32;
+    --sage: #8fae93;
+    --sage-deep: #a9c6ac;
+    --peach: #d9a583;
+    --peach-deep: #e6bb9c;
+    --danger: #d98874;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100%;
+  }
+  .wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 28px 20px calc(40px + env(safe-area-inset-bottom, 0px));
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 22px;
+  }
+  .brand {
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+  }
+  .unit-toggle {
+    display: flex;
+    background: var(--surface-2);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .unit-toggle button {
+    border: none;
+    background: transparent;
+    color: var(--ink-soft);
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .unit-toggle button.active {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .day-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 6px;
+  }
+  .day-nav button {
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px 10px;
+    line-height: 1;
+  }
+  .day-label {
+    font-size: 13px;
+    color: var(--ink-soft);
+    min-width: 120px;
+    text-align: center;
+  }
+  .total-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 34px 20px 28px;
+    text-align: center;
+    margin-bottom: 18px;
+    border: 1px solid var(--line);
+  }
+  .total-number {
+    font-family: 'Fraunces', serif;
+    font-size: 56px;
+    font-weight: 600;
+    color: var(--sage-deep);
+    line-height: 1;
+  }
+  .total-unit {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    color: var(--ink-soft);
+    margin-left: 4px;
+  }
+  .total-sub {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .total-card.under .total-number { color: var(--peach-deep); }
+  .total-card.reached .total-number { color: var(--sage-deep); }
+  .goal-track {
+    position: relative;
+    height: 10px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 18px auto 0;
+    max-width: 320px;
+  }
+  .goal-fill {
+    height: 100%;
+    width: 0;
+    background: var(--peach-deep);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+  }
+  .total-card.reached .goal-fill { background: var(--sage); }
+  .goal-meta {
+    display: flex;
+    justify-content: space-between;
+    max-width: 320px;
+    margin: 6px auto 0;
+    font-size: 11px;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .goal-status {
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--peach-deep);
+  }
+  .total-card.reached .goal-status { color: var(--sage-deep); }
+  .history-row .bar-track { position: relative; }
+  .history-row .bar-fill.reached { background: var(--sage); }
+  .history-row .bar-goal {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--ink);
+    opacity: 0.55;
+  }
+  .quick-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .quick-grid button {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: var(--radius-sm);
+    padding: 12px 4px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .quick-grid button:active {
+    transform: scale(0.96);
+    background: var(--surface-2);
+  }
+  .custom-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 26px;
+  }
+  .custom-row input {
+    flex: 1;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 15px;
+    font-family: 'Inter', sans-serif;
+    min-width: 0;
+  }
+  .custom-row input:focus {
+    outline: 2px solid var(--sage);
+    outline-offset: 1px;
+  }
+  .custom-row button {
+    border: none;
+    background: var(--sage);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    padding: 0 20px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .custom-row button:active { background: var(--sage-deep); }
+  .custom-row input[type="time"] { flex: 0 0 auto; width: 112px; display: none; }
+  .custom-row.past input[type="time"] { display: block; }
+  .day-label { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+  .day-picker { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+  .feed-item .actions { display: flex; gap: 2px; flex-shrink: 0; }
+  .feed-item .edit {
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px 6px;
+    font-family: 'Inter', sans-serif;
+  }
+  .feed-item.editing { flex-wrap: wrap; gap: 8px; border-color: var(--sage); }
+  .feed-edit { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; align-items: center; }
+  .feed-edit input {
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    min-width: 0;
+  }
+  .feed-edit input[type="number"] { width: 90px; }
+  .feed-edit input[type="time"] { width: 104px; }
+  .feed-edit .unit-tag { font-size: 13px; color: var(--ink-soft); margin-left: -4px; }
+  .feed-edit .save, .feed-edit .cancel {
+    border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif;
+  }
+  .feed-edit .save { background: var(--sage); color: #fff; border: 1px solid var(--sage); }
+  .feed-edit .cancel { background: none; color: var(--ink-soft); border: 1px solid var(--line); }
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px 2px; }
+  .section-head .section-label { margin: 0; }
+  .period-toggle { display: flex; background: var(--surface-2); border-radius: 999px; padding: 3px; gap: 2px; }
+  .period-toggle button {
+    border: none; background: transparent; color: var(--ink-soft);
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+    padding: 5px 10px; border-radius: 999px; cursor: pointer;
+  }
+  .period-toggle button.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 6px; text-align: center; }
+  .stat .sv { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; color: var(--ink); line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat .sv small { font-size: 12px; font-family: 'Inter', sans-serif; font-weight: 500; color: var(--ink-soft); margin-left: 2px; }
+  .stat .sl { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
+  .stat.good .sv { color: var(--sage-deep); }
+  .stat.bad .sv { color: var(--peach-deep); }
+  .stats-note { font-size: 11px; color: var(--ink-soft); margin: 0 0 14px 2px; }
+  .history-row { cursor: pointer; border-radius: 6px; padding: 1px 4px; margin: 0 -4px; }
+  .history-row:hover { background: var(--surface-2); }
+  .history-row.viewing .hlabel { color: var(--ink); font-weight: 600; }
+  .history-row .hlabel { width: 56px; }
+  .vitd-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 26px;
+  }
+  .vitd-card .vitd-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .vitd-card .vitd-title { font-weight: 600; font-size: 14px; }
+  .vitd-card .vitd-sub { font-size: 12px; color: var(--ink-soft); }
+  .vitd-card button {
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .vitd-card { flex-wrap: wrap; }
+  .vitd-card.due { border-color: var(--peach-deep); }
+  .vitd-card.due .vitd-sub { color: var(--peach-deep); font-weight: 600; }
+  .vitd-card.due button { background: var(--peach-deep); border-color: var(--peach-deep); color: #fff; animation: vitd-pulse 1.6s ease-in-out infinite; }
+  @keyframes vitd-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  .reminder-row {
+    flex-basis: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid var(--line);
+    margin-top: 10px;
+    padding-top: 10px;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+  .reminder-row label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .reminder-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--sage); margin: 0; }
+  .reminder-row input[type="time"] {
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+  }
+  .reminder-row .reminder-right { display: flex; align-items: center; gap: 10px; }
+  .reminder-row a { color: var(--sage-deep); text-decoration: none; font-weight: 600; white-space: nowrap; }
+  .reminder-note { flex-basis: 100%; font-size: 11px; color: var(--ink-soft); margin-top: 6px; display: none; }
+  .vitd-card.show-note .reminder-note { display: block; }
+  .vitd-card.done { border-color: var(--sage); }
+  .vitd-card.done .vitd-title { color: var(--sage-deep); }
+  .vitd-card.done button { background: var(--sage); border-color: var(--sage); color: #fff; }
+  .history-row .hdot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    background: var(--surface-2);
+  }
+  .history-row .hdot.done { background: var(--sage); }
+  .section-label {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin: 0 0 10px 2px;
+  }
+  .feed-list {
+    list-style: none;
+    margin: 0 0 30px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .feed-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+  }
+  .feed-item .amt { font-weight: 600; font-size: 15px; }
+  .feed-item .time { color: var(--ink-soft); font-size: 13px; margin-left: 10px; }
+  .feed-item .left { display: flex; align-items: baseline; }
+  .feed-item .del {
+    border: none;
+    background: none;
+    color: var(--danger);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px 6px;
+    font-family: 'Inter', sans-serif;
+  }
+  .empty {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 14px;
+    padding: 22px 10px;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+    margin-bottom: 30px;
+  }
+  .history { display: flex; flex-direction: column; gap: 6px; }
+  .history-row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-soft); }
+  .history-row .hlabel { width: 46px; flex-shrink: 0; }
+  .history-row .bar-track { flex: 1; height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+  .history-row .bar-fill { height: 100%; background: var(--peach-deep); border-radius: 999px; }
+  .history-row .hval { width: 56px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .history-row.today .hval { color: var(--ink); font-weight: 600; }
+  .install-banner {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 18px;
+    font-size: 13px;
+  }
+  .install-banner button {
+    border: none;
+    background: var(--sage);
+    color: #fff;
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  footer { text-align: center; color: var(--ink-soft); font-size: 11px; margin-top: 34px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">🍼 Suivi lait</div>
+    <div class="unit-toggle" role="group" aria-label="Unité">
+      <button id="unit-ml" class="active">ml</button>
+      <button id="unit-oz">oz</button>
+    </div>
+  </header>
+
+  <div class="install-banner" id="install-banner">
+    <span>Installer sur l'écran d'accueil ?</span>
+    <button id="install-btn">Installer</button>
+  </div>
+
+  <div class="day-nav">
+    <button id="prev-day" aria-label="Jour précédent">‹</button>
+    <div class="day-label" id="day-label" role="button" tabindex="0" title="Choisir une date">Aujourd'hui</div>
+    <input type="date" class="day-picker" id="day-picker" aria-label="Choisir une date">
+    <button id="next-day" aria-label="Jour suivant">›</button>
+  </div>
+
+  <div class="total-card">
+    <div><span class="total-number" id="total-number">0</span><span class="total-unit" id="total-unit-label">ml</span></div>
+    <div class="total-sub" id="total-sub">Aucun biberon pour l'instant</div>
+    <div class="goal-track" aria-hidden="true"><div class="goal-fill" id="goal-fill"></div></div>
+    <div class="goal-meta"><span>0</span><span id="goal-target">min. 600 ml</span></div>
+    <div class="goal-status" id="goal-status"></div>
+  </div>
+
+  <div class="vitd-card" id="vitd-card">
+    <div class="vitd-text">
+      <span class="vitd-title" id="vitd-title">Vitamine D</span>
+      <span class="vitd-sub" id="vitd-sub">Pas encore donnée aujourd'hui</span>
+    </div>
+    <button id="vitd-btn" aria-pressed="false">À donner</button>
+    <div class="reminder-row">
+      <label><input type="checkbox" id="reminder-enabled"> Rappel chaque matin</label>
+      <div class="reminder-right">
+        <input type="time" id="reminder-time" value="08:00" aria-label="Heure du rappel">
+        <a href="#" id="reminder-ics" download="rappel-vitamine-d.ics">Calendrier</a>
+      </div>
+    </div>
+    <div class="reminder-note" id="reminder-note"></div>
+  </div>
+
+  <p class="section-label">Ajout rapide</p>
+  <div class="quick-grid" id="quick-grid"></div>
+
+  <div class="custom-row">
+    <input type="number" id="custom-amount" placeholder="Quantité personnalisée" inputmode="decimal" min="0">
+    <input type="time" id="custom-time" aria-label="Heure du biberon">
+    <button id="custom-add">Ajouter</button>
+  </div>
+
+  <p class="section-label">Biberons du jour</p>
+  <ul class="feed-list" id="feed-list"></ul>
+
+  <div class="section-head">
+    <p class="section-label">Statistiques</p>
+    <div class="period-toggle" role="group" aria-label="Période">
+      <button id="period-7" class="active">7 j</button>
+      <button id="period-30">30 j</button>
+    </div>
+  </div>
+  <div class="stats-grid" id="stats-grid"></div>
+  <p class="stats-note" id="stats-note"></p>
+
+  <p class="section-label" id="history-label">Historique · touche un jour pour l'ouvrir · trait = minimum 600 ml · point vert = vitamine D</p>
+  <div class="history" id="history"></div>
+
+  <footer>Données stockées localement (IndexedDB) sur cet appareil.</footer>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  var DB_NAME = "suivi-lait-db";
+  var DB_VERSION = 2;
+  var STORE = "feeds";
+  var DAILY_STORE = "daily"; // one record per day: { date, vitaminD: bool, vitaminDTime }
+  var UNIT_KEY = "suivi-lait-unit-v1";
+  var ML_PER_OZ = 29.5735;
+  var DAILY_MIN_ML = 600; // minimum quantité de lait par jour
+  var REMINDER_KEY = "suivi-lait-reminder-v1"; // { enabled, time: "HH:MM", lastNotified: "YYYY-MM-DD" }
+
+  // ---------- IndexedDB layer ----------
+  var dbPromise = null;
+
+  function openDb() {
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise(function(resolve, reject) {
+      if (!("indexedDB" in window)) {
+        reject(new Error("IndexedDB indisponible"));
+        return;
+      }
+      var req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = function(ev) {
+        var db = ev.target.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          var store = db.createObjectStore(STORE, { keyPath: "id" });
+          store.createIndex("by_date", "date", { unique: false });
+        }
+        if (!db.objectStoreNames.contains(DAILY_STORE)) {
+          db.createObjectStore(DAILY_STORE, { keyPath: "date" });
+        }
+      };
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror = function() { reject(req.error); };
+    });
+    return dbPromise;
+  }
+
+  function dbAdd(entry) {
+    return openDb().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        var tx = db.transaction(STORE, "readwrite");
+        tx.objectStore(STORE).add(entry);
+        tx.oncomplete = function() { resolve(entry); };
+        tx.onerror = function() { reject(tx.error); };
+      });
+    });
+  }
+
+  function dbDelete(id) {
+    return openDb().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        var tx = db.transaction(STORE, "readwrite");
+        tx.objectStore(STORE).delete(id);
+        tx.oncomplete = function() { resolve(); };
+        tx.onerror = function() { reject(tx.error); };
+      });
+    });
+  }
+
+  function dbGetByDate(dateStr) {
+    return openDb().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        var tx = db.transaction(STORE, "readonly");
+        var idx = tx.objectStore(STORE).index("by_date");
+        var range = IDBKeyRange.only(dateStr);
+        var results = [];
+        var cursorReq = idx.openCursor(range);
+        cursorReq.onsuccess = function(ev) {
+          var cursor = ev.target.result;
+          if (cursor) {
+            results.push(cursor.value);
+            cursor.continue();
+          } else {
+            resolve(results);
+          }
+        };
+        cursorReq.onerror = function() { reject(cursorReq.error); };
+      });
+    });
+  }
+
+  function dbGetDaily(dateStr) {
+    return openDb().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        var tx = db.transaction(DAILY_STORE, "readonly");
+        var req = tx.objectStore(DAILY_STORE).get(dateStr);
+        req.onsuccess = function() { resolve(req.result || null); };
+        req.onerror = function() { reject(req.error); };
+      });
+    });
+  }
+
+  function dbPutDaily(record) {
+    return openDb().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        var tx = db.transaction(DAILY_STORE, "readwrite");
+        tx.objectStore(DAILY_STORE).put(record);
+        tx.oncomplete = function() { resolve(record); };
+        tx.onerror = function() { reject(tx.error); };
+      });
+    });
+  }
+
+  function dbPut(entry) {
+    return openDb().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        var tx = db.transaction(STORE, "readwrite");
+        tx.objectStore(STORE).put(entry);
+        tx.oncomplete = function() { resolve(entry); };
+        tx.onerror = function() { reject(tx.error); };
+      });
+    });
+  }
+
+  function dbGetAllDaily() {
+    return openDb().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        var tx = db.transaction(DAILY_STORE, "readonly");
+        var req = tx.objectStore(DAILY_STORE).getAll();
+        req.onsuccess = function() { resolve(req.result || []); };
+        req.onerror = function() { reject(req.error); };
+      });
+    });
+  }
+
+  function dbGetAll() {
+    return openDb().then(function(db) {
+      return new Promise(function(resolve, reject) {
+        var tx = db.transaction(STORE, "readonly");
+        var req = tx.objectStore(STORE).getAll();
+        req.onsuccess = function() { resolve(req.result || []); };
+        req.onerror = function() { reject(req.error); };
+      });
+    });
+  }
+
+  // one-time migration from the old localStorage version, if present
+  function migrateFromLocalStorage() {
+    try {
+      var raw = localStorage.getItem("suivi-lait-data-v1");
+      if (!raw) return Promise.resolve();
+      var parsed = JSON.parse(raw);
+      var jobs = [];
+      Object.keys(parsed || {}).forEach(function(dateStr) {
+        (parsed[dateStr] || []).forEach(function(e) {
+          jobs.push(dbAdd({
+            id: e.id || (Date.now() + "-" + Math.random().toString(36).slice(2, 7)),
+            date: dateStr,
+            ml: e.ml,
+            time: e.time
+          }).catch(function() {}));
+        });
+      });
+      return Promise.all(jobs).then(function() {
+        localStorage.removeItem("suivi-lait-data-v1");
+      });
+    } catch (e) {
+      return Promise.resolve();
+    }
+  }
+
+  function loadUnit() {
+    try {
+      var u = localStorage.getItem(UNIT_KEY);
+      return u === "oz" ? "oz" : "ml";
+    } catch (e) { return "ml"; }
+  }
+  function saveUnit(u) {
+    try { localStorage.setItem(UNIT_KEY, u); } catch (e) {}
+  }
+
+  function loadReminder() {
+    try {
+      var r = JSON.parse(localStorage.getItem(REMINDER_KEY) || "null");
+      if (r && typeof r === "object") return { enabled: !!r.enabled, time: r.time || "08:00", lastNotified: r.lastNotified || null };
+    } catch (e) {}
+    return { enabled: false, time: "08:00", lastNotified: null };
+  }
+  function saveReminder(r) {
+    try { localStorage.setItem(REMINDER_KEY, JSON.stringify(r)); } catch (e) {}
+  }
+
+  function todayStr(d) {
+    var dt = d || new Date();
+    var y = dt.getFullYear();
+    var m = String(dt.getMonth() + 1).padStart(2, "0");
+    var day = String(dt.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
+
+  var state = {
+    unit: loadUnit(),
+    viewDate: new Date(),
+    cacheByDate: {},
+    reminder: loadReminder(),
+    vitaminDTodayGiven: null,
+    period: 7,
+    editingId: null
+  };
+
+  var quickAmountsMl = [60, 90, 120, 150];
+
+  var els = {
+    unitMl: document.getElementById("unit-ml"),
+    unitOz: document.getElementById("unit-oz"),
+    prevDay: document.getElementById("prev-day"),
+    nextDay: document.getElementById("next-day"),
+    dayLabel: document.getElementById("day-label"),
+    totalNumber: document.getElementById("total-number"),
+    totalUnitLabel: document.getElementById("total-unit-label"),
+    totalSub: document.getElementById("total-sub"),
+    totalCard: document.querySelector(".total-card"),
+    goalFill: document.getElementById("goal-fill"),
+    goalTarget: document.getElementById("goal-target"),
+    goalStatus: document.getElementById("goal-status"),
+    quickGrid: document.getElementById("quick-grid"),
+    customAmount: document.getElementById("custom-amount"),
+    customTime: document.getElementById("custom-time"),
+    customRow: document.querySelector(".custom-row"),
+    dayPicker: document.getElementById("day-picker"),
+    statsGrid: document.getElementById("stats-grid"),
+    statsNote: document.getElementById("stats-note"),
+    period7: document.getElementById("period-7"),
+    period30: document.getElementById("period-30"),
+    customAdd: document.getElementById("custom-add"),
+    feedList: document.getElementById("feed-list"),
+    history: document.getElementById("history"),
+    vitdCard: document.getElementById("vitd-card"),
+    vitdSub: document.getElementById("vitd-sub"),
+    vitdBtn: document.getElementById("vitd-btn"),
+    reminderEnabled: document.getElementById("reminder-enabled"),
+    reminderTime: document.getElementById("reminder-time"),
+    reminderIcs: document.getElementById("reminder-ics"),
+    reminderNote: document.getElementById("reminder-note")
+  };
+
+  function mlToDisplay(ml) {
+    if (state.unit === "oz") return Math.round((ml / ML_PER_OZ) * 10) / 10;
+    return Math.round(ml);
+  }
+  function displayToMl(val) {
+    if (state.unit === "oz") return val * ML_PER_OZ;
+    return val;
+  }
+  function formatTime(iso) {
+    var d = new Date(iso);
+    var h = String(d.getHours()).padStart(2, "0");
+    var m = String(d.getMinutes()).padStart(2, "0");
+    return h + ":" + m;
+  }
+  function isToday(dateStr) { return dateStr === todayStr(new Date()); }
+  function nowHHMM() {
+    var d = new Date();
+    return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+  // ISO timestamp for a feed on dateStr: "now" for today, otherwise the chosen HH:MM on that day
+  function timeOnDate(dateStr, hhmm) {
+    if (!hhmm) return new Date(dateStr + "T12:00:00").toISOString();
+    return new Date(dateStr + "T" + hhmm + ":00").toISOString();
+  }
+  function entryTimeFor(dateStr) {
+    if (isToday(dateStr)) return new Date().toISOString();
+    return timeOnDate(dateStr, els.customTime.value || "12:00");
+  }
+  function goToDate(d) {
+    var today = new Date();
+    if (d > today) d = today;
+    state.viewDate = d;
+    state.editingId = null;
+    els.customTime.value = isToday(todayStr(d)) ? "" : nowHHMM();
+    render();
+  }
+  function isYesterday(dateStr) {
+    var y = new Date();
+    y.setDate(y.getDate() - 1);
+    return dateStr === todayStr(y);
+  }
+
+  function addEntry(ml, dateStr) {
+    if (!ml || ml <= 0) return Promise.resolve();
+    var entry = {
+      id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+      date: dateStr,
+      ml: Math.round(ml * 10) / 10,
+      time: entryTimeFor(dateStr)
+    };
+    return dbAdd(entry).then(render).catch(function(e) {
+      console.error("Erreur d'enregistrement", e);
+    });
+  }
+
+  function updateEntry(entry, ml, hhmm) {
+    if (!ml || ml <= 0) return Promise.resolve();
+    var updated = {
+      id: entry.id,
+      date: entry.date,
+      ml: Math.round(ml * 10) / 10,
+      time: hhmm ? timeOnDate(entry.date, hhmm) : entry.time
+    };
+    state.editingId = null;
+    return dbPut(updated).then(render).catch(function(e) {
+      console.error("Erreur de modification", e);
+    });
+  }
+
+  function removeEntry(id) {
+    return dbDelete(id).then(render).catch(function(e) {
+      console.error("Erreur de suppression", e);
+    });
+  }
+
+  function toggleVitaminD() {
+    var dateStr = todayStr(state.viewDate);
+    return dbGetDaily(dateStr).then(function(rec) {
+      var given = !(rec && rec.vitaminD);
+      return dbPutDaily({
+        date: dateStr,
+        vitaminD: given,
+        vitaminDTime: given ? new Date().toISOString() : null
+      });
+    }).then(render).catch(function(e) {
+      console.error("Erreur vitamine D", e);
+    });
+  }
+
+  // ---------- Rappel vitamine D ----------
+  function reminderIsDue() {
+    var r = state.reminder;
+    if (!r.enabled) return false;
+    var parts = r.time.split(":");
+    var now = new Date();
+    var due = new Date();
+    due.setHours(parseInt(parts[0], 10) || 0, parseInt(parts[1], 10) || 0, 0, 0);
+    return now >= due;
+  }
+
+  function notificationsAvailable() {
+    return "Notification" in window && window.isSecureContext;
+  }
+
+  function showReminderNotification() {
+    if (!notificationsAvailable() || Notification.permission !== "granted") return;
+    var title = "Vitamine D";
+    var opts = { body: "Pense à donner la vitamine D ce matin.", icon: "/icon-192.png", badge: "/icon-192.png", tag: "vitd-reminder" };
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.ready.then(function(reg) {
+        if (reg && reg.showNotification) return reg.showNotification(title, opts);
+        new Notification(title, opts);
+      }).catch(function() { try { new Notification(title, opts); } catch (e) {} });
+    } else {
+      try { new Notification(title, opts); } catch (e) {}
+    }
+  }
+
+  // Called on load, every minute, and after each render: shows the in-app "due" state and
+  // fires at most one notification per day while the app is open.
+  function checkReminder() {
+    var today = todayStr(new Date());
+    var given = state.vitaminDTodayGiven;
+    var due = reminderIsDue() && given === false;
+    if (isToday(todayStr(state.viewDate))) {
+      els.vitdCard.classList.toggle("due", due);
+      if (due) els.vitdSub.textContent = "⏰ Rappel : pas encore donnée ce matin";
+    }
+    if (due && state.reminder.lastNotified !== today) {
+      state.reminder.lastNotified = today;
+      saveReminder(state.reminder);
+      showReminderNotification();
+    }
+  }
+
+  function renderReminderControls() {
+    var r = state.reminder;
+    els.reminderEnabled.checked = r.enabled;
+    els.reminderTime.value = r.time;
+    var note = "";
+    if (r.enabled) {
+      if (!notificationsAvailable()) {
+        note = "Ce navigateur ne peut pas afficher de notifications ; le rappel s'affiche dans l'app. Utilise « Calendrier » pour une alerte sur le téléphone.";
+      } else if (Notification.permission === "denied") {
+        note = "Notifications refusées dans le navigateur. Le rappel s'affiche dans l'app ; utilise « Calendrier » pour une alerte sur le téléphone.";
+      } else {
+        note = "Le rappel s'affiche dans l'app et en notification quand elle est ouverte. Pour une alerte même app fermée, ajoute-le au calendrier.";
+      }
+    }
+    els.reminderNote.textContent = note;
+    els.vitdCard.classList.toggle("show-note", !!note);
+    els.reminderIcs.href = buildIcsUrl(r.time);
+  }
+
+  function buildIcsUrl(time) {
+    var parts = time.split(":");
+    var h = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
+    var hh = String(isNaN(h) ? 8 : h).padStart(2, "0");
+    var mm = String(isNaN(m) ? 0 : m).padStart(2, "0");
+    var start = todayStr(new Date()).replace(/-/g, "") + "T" + hh + mm + "00";
+    var stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    var ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Suivi lait//Rappel vitamine D//FR",
+      "BEGIN:VEVENT",
+      "UID:vitamine-d-" + hh + mm + "@suivi-lait",
+      "DTSTAMP:" + stamp,
+      "DTSTART:" + start,
+      "DURATION:PT5M",
+      "RRULE:FREQ=DAILY",
+      "SUMMARY:Vitamine D 💊",
+      "DESCRIPTION:Donner la vitamine D au bébé puis la cocher dans Suivi lait.",
+      "BEGIN:VALARM",
+      "TRIGGER:PT0M",
+      "ACTION:DISPLAY",
+      "DESCRIPTION:Vitamine D",
+      "END:VALARM",
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+    return "data:text/calendar;charset=utf-8," + encodeURIComponent(ics);
+  }
+
+  function setReminder(enabled, time) {
+    state.reminder.enabled = enabled;
+    if (time) state.reminder.time = time;
+    saveReminder(state.reminder);
+    if (enabled && notificationsAvailable() && Notification.permission === "default") {
+      Notification.requestPermission().then(function() { renderReminderControls(); checkReminder(); });
+    }
+    renderReminderControls();
+    checkReminder();
+  }
+
+  function renderVitaminD() {
+    var dateStr = todayStr(state.viewDate);
+    dbGetDaily(dateStr).then(function(rec) {
+      var given = !!(rec && rec.vitaminD);
+      if (isToday(dateStr)) state.vitaminDTodayGiven = given;
+      els.vitdCard.classList.toggle("done", given);
+      els.vitdCard.classList.remove("due");
+      els.vitdBtn.setAttribute("aria-pressed", given ? "true" : "false");
+      els.vitdBtn.textContent = given ? "✓ Donnée" : "À donner";
+      if (given) {
+        els.vitdSub.textContent = rec.vitaminDTime
+          ? "Donnée à " + formatTime(rec.vitaminDTime)
+          : "Donnée";
+      } else {
+        els.vitdSub.textContent = isToday(dateStr)
+          ? "Pas encore donnée aujourd'hui"
+          : "Non donnée ce jour";
+      }
+      checkReminder();
+    }).catch(function(e) { console.error("Erreur lecture vitamine D", e); });
+  }
+
+  function renderQuickGrid() {
+    els.quickGrid.innerHTML = "";
+    quickAmountsMl.forEach(function(ml) {
+      var btn = document.createElement("button");
+      btn.textContent = mlToDisplay(ml) + " " + state.unit;
+      btn.addEventListener("click", function() { addEntry(ml, todayStr(state.viewDate)); });
+      els.quickGrid.appendChild(btn);
+    });
+  }
+
+  function renderDayNav() {
+    var dateStr = todayStr(state.viewDate);
+    els.customRow.classList.toggle("past", !isToday(dateStr));
+    els.dayPicker.value = dateStr;
+    els.dayPicker.max = todayStr(new Date());
+    if (isToday(dateStr)) {
+      els.dayLabel.textContent = "Aujourd'hui";
+      els.nextDay.style.visibility = "hidden";
+    } else if (isYesterday(dateStr)) {
+      els.dayLabel.textContent = "Hier";
+      els.nextDay.style.visibility = "visible";
+    } else {
+      els.dayLabel.textContent = state.viewDate.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+      els.nextDay.style.visibility = "visible";
+    }
+  }
+
+  function render() {
+    var dateStr = todayStr(state.viewDate);
+    renderDayNav();
+    renderQuickGrid();
+    renderVitaminD();
+
+    dbGetByDate(dateStr).then(function(entries) {
+      entries.sort(function(a, b) { return new Date(b.time) - new Date(a.time); });
+      var totalMl = entries.reduce(function(sum, e) { return sum + e.ml; }, 0);
+
+      els.totalNumber.textContent = mlToDisplay(totalMl);
+      els.totalUnitLabel.textContent = state.unit;
+      els.totalSub.textContent = entries.length === 0
+        ? "Aucun biberon pour l'instant"
+        : entries.length + (entries.length > 1 ? " biberons" : " biberon");
+
+      var reached = totalMl >= DAILY_MIN_ML;
+      var pct = Math.min(100, Math.round((totalMl / DAILY_MIN_ML) * 100));
+      els.totalCard.classList.toggle("reached", reached);
+      els.totalCard.classList.toggle("under", !reached && totalMl > 0);
+      els.goalFill.style.width = pct + "%";
+      els.goalTarget.textContent = "min. " + mlToDisplay(DAILY_MIN_ML) + " " + state.unit;
+      if (reached) {
+        var extra = totalMl - DAILY_MIN_ML;
+        els.goalStatus.textContent = "✓ Minimum atteint" + (extra > 0 ? " (+" + mlToDisplay(extra) + " " + state.unit + ")" : "");
+      } else {
+        els.goalStatus.textContent = "Encore " + mlToDisplay(DAILY_MIN_ML - totalMl) + " " + state.unit + " pour atteindre le minimum";
+      }
+
+      els.feedList.innerHTML = "";
+      if (entries.length === 0) {
+        var empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "Aucun biberon enregistré pour cette journée.";
+        els.feedList.appendChild(empty);
+      } else {
+        entries.forEach(function(e) {
+          var li = document.createElement("li");
+          li.className = "feed-item";
+          if (state.editingId === e.id) {
+            li.className += " editing";
+            var form = document.createElement("div");
+            form.className = "feed-edit";
+            var amtIn = document.createElement("input");
+            amtIn.type = "number"; amtIn.inputMode = "decimal"; amtIn.min = "0";
+            amtIn.value = mlToDisplay(e.ml);
+            amtIn.setAttribute("aria-label", "Quantité");
+            var unitTag = document.createElement("span");
+            unitTag.className = "unit-tag"; unitTag.textContent = state.unit;
+            var timeIn = document.createElement("input");
+            timeIn.type = "time"; timeIn.value = formatTime(e.time);
+            timeIn.setAttribute("aria-label", "Heure");
+            var save = document.createElement("button");
+            save.className = "save"; save.textContent = "Enregistrer";
+            var cancel = document.createElement("button");
+            cancel.className = "cancel"; cancel.textContent = "Annuler";
+            var doSave = function() { updateEntry(e, displayToMl(parseFloat(amtIn.value)), timeIn.value); };
+            save.addEventListener("click", doSave);
+            amtIn.addEventListener("keydown", function(ev) { if (ev.key === "Enter") doSave(); });
+            cancel.addEventListener("click", function() { state.editingId = null; render(); });
+            form.appendChild(amtIn); form.appendChild(unitTag); form.appendChild(timeIn);
+            form.appendChild(save); form.appendChild(cancel);
+            li.appendChild(form);
+            els.feedList.appendChild(li);
+            setTimeout(function() { amtIn.focus(); amtIn.select(); }, 0);
+            return;
+          }
+          var left = document.createElement("div");
+          left.className = "left";
+          var amt = document.createElement("span");
+          amt.className = "amt";
+          amt.textContent = mlToDisplay(e.ml) + " " + state.unit;
+          var time = document.createElement("span");
+          time.className = "time";
+          time.textContent = formatTime(e.time);
+          left.appendChild(amt);
+          left.appendChild(time);
+          var actions = document.createElement("div");
+          actions.className = "actions";
+          var edit = document.createElement("button");
+          edit.className = "edit";
+          edit.textContent = "Modifier";
+          edit.addEventListener("click", function() { state.editingId = e.id; render(); });
+          var del = document.createElement("button");
+          del.className = "del";
+          del.textContent = "Supprimer";
+          del.addEventListener("click", function() { removeEntry(e.id); });
+          actions.appendChild(edit);
+          actions.appendChild(del);
+          li.appendChild(left);
+          li.appendChild(actions);
+          els.feedList.appendChild(li);
+        });
+      }
+    }).catch(function(e) { console.error("Erreur de lecture", e); });
+
+    renderHistory();
+  }
+
+  function renderStats(days, totals, counts, dailyRecs) {
+    var withData = days.filter(function(d, i) { return counts[i] > 0; });
+    var n = withData.length;
+    var sumMl = 0, sumCount = 0, reached = 0, vitd = 0, best = 0, bestDay = null;
+    days.forEach(function(d, i) {
+      if (counts[i] > 0) {
+        sumMl += totals[i]; sumCount += counts[i];
+        if (totals[i] >= DAILY_MIN_ML) reached++;
+        if (totals[i] > best) { best = totals[i]; bestDay = d; }
+      }
+      if (dailyRecs[i] && dailyRecs[i].vitaminD) vitd++;
+    });
+    var avgDay = n ? sumMl / n : 0;
+    var avgBottle = sumCount ? sumMl / sumCount : 0;
+    var avgCount = n ? sumCount / n : 0;
+    var u = state.unit;
+    function tile(value, unit, label, cls) {
+      var t = document.createElement("div");
+      t.className = "stat" + (cls ? " " + cls : "");
+      var v = document.createElement("div"); v.className = "sv";
+      v.textContent = value;
+      if (unit) { var sm = document.createElement("small"); sm.textContent = unit; v.appendChild(sm); }
+      var l = document.createElement("div"); l.className = "sl"; l.textContent = label;
+      t.appendChild(v); t.appendChild(l);
+      return t;
+    }
+    els.statsGrid.innerHTML = "";
+    if (n === 0) {
+      els.statsNote.textContent = "Aucun biberon enregistré sur les " + days.length + " derniers jours.";
+      return;
+    }
+    els.statsGrid.appendChild(tile(mlToDisplay(avgDay), u, "moyenne / jour", avgDay >= DAILY_MIN_ML ? "good" : "bad"));
+    els.statsGrid.appendChild(tile(reached + "/" + n, "", "jours ≥ " + mlToDisplay(DAILY_MIN_ML) + " " + u, reached === n ? "good" : (reached < n / 2 ? "bad" : "")));
+    els.statsGrid.appendChild(tile(Math.round(avgCount * 10) / 10, "", "biberons / jour"));
+    els.statsGrid.appendChild(tile(mlToDisplay(avgBottle), u, "moyenne / biberon"));
+    els.statsGrid.appendChild(tile(vitd + "/" + days.length, "", "jours vitamine D", vitd === days.length ? "good" : (vitd < days.length / 2 ? "bad" : "")));
+    var bestLabel = bestDay ? new Date(bestDay + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "";
+    els.statsGrid.appendChild(tile(mlToDisplay(best), u, "record · " + bestLabel));
+    els.statsNote.textContent = "Moyennes calculées sur " + n + (n > 1 ? " jours renseignés" : " jour renseigné") + " sur " + days.length + ".";
+  }
+
+  function renderHistory() {
+    var days = [];
+    for (var i = 0; i < state.period; i++) {
+      var d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(todayStr(d));
+    }
+    var first = days[days.length - 1];
+    Promise.all([dbGetAll(), dbGetAllDaily()]).then(function(res) {
+      var byDate = {};
+      res[0].forEach(function(e) {
+        if (e.date < first) return;
+        (byDate[e.date] = byDate[e.date] || []).push(e);
+      });
+      var dailyByDate = {};
+      res[1].forEach(function(r) { dailyByDate[r.date] = r; });
+
+      var totals = days.map(function(d) {
+        return (byDate[d] || []).reduce(function(sum, e) { return sum + e.ml; }, 0);
+      });
+      var counts = days.map(function(d) { return (byDate[d] || []).length; });
+      var dailyRecs = days.map(function(d) { return dailyByDate[d] || null; });
+
+      renderStats(days, totals, counts, dailyRecs);
+
+      // scale leaves ~10% headroom so the 600 ml marker never sits on the edge
+      var max = Math.max.apply(null, totals.concat([DAILY_MIN_ML])) * 1.1;
+      var viewing = todayStr(state.viewDate);
+
+      els.history.innerHTML = "";
+      days.forEach(function(dateStr, idx) {
+        var d = new Date(dateStr + "T00:00:00");
+        var row = document.createElement("div");
+        row.className = "history-row" + (isToday(dateStr) ? " today" : "") + (dateStr === viewing ? " viewing" : "");
+        row.title = "Ouvrir le " + d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+        row.addEventListener("click", function() {
+          goToDate(new Date(dateStr + "T00:00:00"));
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        var label = document.createElement("div");
+        label.className = "hlabel";
+        label.textContent = isToday(dateStr)
+          ? "Auj."
+          : d.toLocaleDateString("fr-FR", { weekday: "short" }).replace(".", "") + " " + d.getDate();
+
+        var track = document.createElement("div");
+        track.className = "bar-track";
+        var fill = document.createElement("div");
+        fill.className = "bar-fill" + (totals[idx] >= DAILY_MIN_ML ? " reached" : "");
+        fill.style.width = (max > 0 ? Math.round((totals[idx] / max) * 100) : 0) + "%";
+        track.appendChild(fill);
+        var goalMark = document.createElement("div");
+        goalMark.className = "bar-goal";
+        goalMark.style.left = Math.round((DAILY_MIN_ML / max) * 100) + "%";
+        goalMark.title = "Minimum " + DAILY_MIN_ML + " ml";
+        track.appendChild(goalMark);
+
+        var val = document.createElement("div");
+        val.className = "hval";
+        val.textContent = totals[idx] > 0 ? mlToDisplay(totals[idx]) + " " + state.unit : "—";
+
+        var dot = document.createElement("div");
+        var vitGiven = !!(dailyRecs[idx] && dailyRecs[idx].vitaminD);
+        dot.className = "hdot" + (vitGiven ? " done" : "");
+        dot.title = vitGiven ? "Vitamine D donnée" : "Vitamine D non donnée";
+
+        row.appendChild(label);
+        row.appendChild(dot);
+        row.appendChild(track);
+        row.appendChild(val);
+        els.history.appendChild(row);
+      });
+    }).catch(function(e) { console.error("Erreur historique", e); });
+  }
+
+  function setUnit(u) {
+    state.unit = u;
+    saveUnit(u);
+    els.unitMl.classList.toggle("active", u === "ml");
+    els.unitOz.classList.toggle("active", u === "oz");
+    render();
+  }
+
+  els.unitMl.addEventListener("click", function() { setUnit("ml"); });
+  els.unitOz.addEventListener("click", function() { setUnit("oz"); });
+
+  els.prevDay.addEventListener("click", function() {
+    var d = new Date(state.viewDate); d.setDate(d.getDate() - 1); goToDate(d);
+  });
+  els.nextDay.addEventListener("click", function() {
+    if (isToday(todayStr(state.viewDate))) return;
+    var d = new Date(state.viewDate); d.setDate(d.getDate() + 1); goToDate(d);
+  });
+  function openDayPicker() {
+    if (typeof els.dayPicker.showPicker === "function") {
+      try { els.dayPicker.showPicker(); return; } catch (e) {}
+    }
+    els.dayPicker.focus(); els.dayPicker.click();
+  }
+  els.dayLabel.addEventListener("click", openDayPicker);
+  els.dayLabel.addEventListener("keydown", function(ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openDayPicker(); } });
+  els.dayPicker.addEventListener("change", function() {
+    if (!els.dayPicker.value) return;
+    goToDate(new Date(els.dayPicker.value + "T00:00:00"));
+  });
+  function setPeriod(p) {
+    state.period = p;
+    els.period7.classList.toggle("active", p === 7);
+    els.period30.classList.toggle("active", p === 30);
+    renderHistory();
+  }
+  els.period7.addEventListener("click", function() { setPeriod(7); });
+  els.period30.addEventListener("click", function() { setPeriod(30); });
+
+  els.customAdd.addEventListener("click", function() {
+    var raw = parseFloat(els.customAmount.value);
+    if (!raw || raw <= 0) return;
+    addEntry(displayToMl(raw), todayStr(state.viewDate));
+    els.customAmount.value = "";
+  });
+  els.customAmount.addEventListener("keydown", function(ev) {
+    if (ev.key === "Enter") els.customAdd.click();
+  });
+
+  els.vitdBtn.addEventListener("click", toggleVitaminD);
+  els.reminderEnabled.addEventListener("change", function() { setReminder(els.reminderEnabled.checked, null); });
+  els.reminderTime.addEventListener("change", function() { setReminder(state.reminder.enabled, els.reminderTime.value || "08:00"); });
+  setInterval(checkReminder, 60 * 1000);
+  document.addEventListener("visibilitychange", function() { if (!document.hidden) checkReminder(); });
+
+  var deferredInstallPrompt = null;
+  window.addEventListener("beforeinstallprompt", function(ev) {
+    ev.preventDefault();
+    deferredInstallPrompt = ev;
+    var banner = document.getElementById("install-banner");
+    if (banner) banner.style.display = "flex";
+  });
+  var installBtn = document.getElementById("install-btn");
+  if (installBtn) {
+    installBtn.addEventListener("click", function() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.finally(function() {
+        deferredInstallPrompt = null;
+        var banner = document.getElementById("install-banner");
+        if (banner) banner.style.display = "none";
+      });
+    });
+  }
+
+  // ---------- boot ----------
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function() {
+      navigator.serviceWorker.register("/sw.js").catch(function(e) { console.error("SW", e); });
+    });
+  }
+  migrateFromLocalStorage().then(function() {
+    renderReminderControls();
+    setUnit(state.unit);
+    render();
+  });
+})();
+</script>
+</body>
+</html>
