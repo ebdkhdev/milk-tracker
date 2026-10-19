@@ -22,7 +22,13 @@
   --glass-rim: rgba(255, 255, 255, 0.9);
   --glass-line: rgba(0, 0, 0, 0.08);
   --glass-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-  --wash: rgba(75, 73, 200, 0.08);   /* brand colour in the content layer, for the glass to pick up */
+  /* Glass panels: every card is a translucent sheet over a fixed colour backdrop */
+  --panel: rgba(255, 255, 255, 0.68);
+  --label-on-bg: #3a3a3c;   /* secondary text sitting directly on the colour backdrop */
+  --panel-shadow: rgba(40, 40, 90, 0.1);
+  --blob-1: rgba(124, 122, 255, 0.7);
+  --blob-2: rgba(255, 128, 171, 0.55);
+  --blob-3: rgba(64, 200, 224, 0.55);
   --radius: 12px;
   --radius-lg: 20px;
   --gutter: 16px;
@@ -52,7 +58,12 @@
     --glass-rim: rgba(255, 255, 255, 0.22);
     --glass-line: rgba(255, 255, 255, 0.1);
     --glass-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-    --wash: rgba(142, 140, 255, 0.18);
+    --panel: rgba(36, 36, 42, 0.62);
+    --label-on-bg: #d1d1d6;
+    --panel-shadow: rgba(0, 0, 0, 0.35);
+    --blob-1: rgba(94, 92, 230, 0.75);
+    --blob-2: rgba(191, 90, 242, 0.55);
+    --blob-3: rgba(48, 176, 199, 0.5);
   }
 }
 :root[data-theme="dark"] {
@@ -76,7 +87,12 @@
   --glass-rim: rgba(255, 255, 255, 0.22);
   --glass-line: rgba(255, 255, 255, 0.1);
   --glass-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-  --wash: rgba(142, 140, 255, 0.18);
+  --panel: rgba(36, 36, 42, 0.62);
+  --label-on-bg: #d1d1d6;
+  --panel-shadow: rgba(0, 0, 0, 0.35);
+  --blob-1: rgba(94, 92, 230, 0.75);
+  --blob-2: rgba(191, 90, 242, 0.55);
+  --blob-3: rgba(48, 176, 199, 0.5);
 }
 /* Increase Contrast: stronger secondary text and opaque separators */
 @media (prefers-contrast: more) {
@@ -94,9 +110,22 @@ html { font-size: 106.25%; }
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
+/* Fixed colour backdrop (a pseudo-element, since background-attachment: fixed is ignored on iOS):
+   the content scrolls over it and the glass panels pick its colours up. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(70vmax 70vmax at -10% -5%, var(--blob-1), transparent 65%),
+    radial-gradient(60vmax 60vmax at 110% 35%, var(--blob-2), transparent 65%),
+    radial-gradient(70vmax 70vmax at 20% 110%, var(--blob-3), transparent 65%),
+    var(--bg);
+}
 body {
-  /* the wash scrolls with the page (content layer) and stays behind the title only */
-  background: radial-gradient(130% 440px at 50% -120px, var(--wash), transparent) no-repeat, var(--bg);
+  background: var(--bg);
   color: var(--label);
   font-family: var(--font);
   font-size: 1rem;
@@ -278,12 +307,12 @@ header .unit-toggle, header .unit-toggle button { border-radius: 999px; }
 
 /* ---------- Grouped content ---------- */
 .card {
-  background: var(--surface);
+  background: var(--panel);
   border-radius: var(--radius-lg);
 }
 .section-label {
   font-size: 0.765rem;
-  color: var(--label-2);
+  color: var(--label-on-bg);
   margin: 0 0 8px;
   padding-inline-start: var(--gutter);
   text-transform: none;
@@ -293,7 +322,7 @@ header .unit-toggle, header .unit-toggle button { border-radius: 999px; }
 
 /* Total card with the progress ring (the signature element: the day's bottle filling up) */
 .total-card {
-  background: var(--surface);
+  background: var(--panel);
   border-radius: var(--radius-lg);
   padding: 22px var(--gutter) 18px;
   text-align: center;
@@ -353,7 +382,7 @@ header .unit-toggle, header .unit-toggle button { border-radius: 999px; }
 
 /* Vitamin D: a two-row grouped list */
 .vitd-card {
-  background: var(--surface);
+  background: var(--panel);
   border-radius: var(--radius-lg);
   margin-bottom: 8px;
   overflow: hidden;
@@ -413,7 +442,7 @@ header .unit-toggle, header .unit-toggle button { border-radius: 999px; }
   display: inline-flex;
   align-items: center;
 }
-.reminder-note { font-size: 0.765rem; color: var(--label-2); margin: 0 0 24px; padding: 0 var(--gutter); display: none; }
+.reminder-note { font-size: 0.765rem; color: var(--label-on-bg); margin: 0 0 24px; padding: 0 var(--gutter); display: none; }
 .reminder-note.show { display: block; }
 .vitd-spacer { height: 16px; }
 
@@ -478,7 +507,7 @@ input[type="time"], input[type="date"], input[type="number"] {
 }
 .quick-grid button {
   border: none;
-  background: var(--surface);
+  background: var(--panel);
   color: var(--tint);
   border-radius: var(--radius);
   min-height: 52px;
@@ -497,7 +526,7 @@ input[type="time"], input[type="date"], input[type="number"] {
 }
 .custom-row input {
   flex: 1;
-  background: var(--surface);
+  background: var(--panel);
   border-radius: var(--radius);
   min-height: 48px;
   padding: 0 14px;
@@ -523,7 +552,7 @@ input[type="time"], input[type="date"], input[type="number"] {
   list-style: none;
   margin: 0 0 8px;
   padding: 0;
-  background: var(--surface);
+  background: var(--panel);
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
@@ -578,7 +607,7 @@ input[type="time"], input[type="date"], input[type="number"] {
 /* Stats */
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(5.2rem, 1fr)); gap: 8px; margin-bottom: 8px; }
 .stat {
-  background: var(--surface);
+  background: var(--panel);
   border-radius: var(--radius);
   padding: 12px 8px;
   text-align: center;
@@ -594,10 +623,10 @@ input[type="time"], input[type="date"], input[type="number"] {
 .stat .sl { font-size: 0.706rem; color: var(--label-2); margin-top: 4px; }
 .stat.good .sv { color: var(--good); }
 .stat.bad .sv { color: var(--warn); }
-.stats-note { font-size: 0.765rem; color: var(--label-2); margin: 0 0 24px; padding-inline-start: var(--gutter); }
+.stats-note { font-size: 0.765rem; color: var(--label-on-bg); margin: 0 0 24px; padding-inline-start: var(--gutter); }
 
 /* History: a grouped list, one 44pt row per day */
-.history { background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; }
+.history { background: var(--panel); border-radius: var(--radius-lg); overflow: hidden; }
 .history-row {
   display: flex;
   align-items: center;
@@ -630,7 +659,7 @@ input[type="time"], input[type="date"], input[type="number"] {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: var(--surface);
+  background: var(--panel);
   border-radius: var(--radius-lg);
   padding: 10px var(--gutter);
   margin-top: 14px;
@@ -651,7 +680,7 @@ input[type="time"], input[type="date"], input[type="number"] {
 
 /* Settings panel (baby): grouped sections */
 .settings-card {
-  background: var(--surface);
+  background: var(--panel);
   border-radius: var(--radius-lg);
   padding: 4px var(--gutter) 14px;
   margin-top: 14px;
@@ -689,7 +718,26 @@ input[type="time"], input[type="date"], input[type="number"] {
 .settings-note { color: var(--label-2); font-size: 0.765rem; margin: 8px 0 0; }
 .settings-reset { margin-top: 4px; }
 
-footer { text-align: center; color: var(--label-2); font-size: 0.765rem; margin-top: 30px; }
+/* ---------- Glass panels (all cards and tiles) ---------- */
+.card, .total-card, .vitd-card, .quick-grid button, .custom-row input, .feed-list, .stat, .history, .install-banner, .settings-card {
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow: inset 0 0.5px 0 var(--glass-rim), inset 0 0 0 0.5px var(--glass-line), 0 8px 24px var(--panel-shadow);
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .card, .total-card, .vitd-card, .quick-grid button, .custom-row input, .feed-list, .stat, .history, .install-banner, .settings-card {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .card, .total-card, .vitd-card, .quick-grid button, .custom-row input, .feed-list, .stat, .history, .install-banner, .settings-card {
+    box-shadow: inset 0 0 0 1px var(--separator);
+  }
+}
+
+footer { text-align: center; color: var(--label-on-bg); font-size: 0.765rem; margin-top: 30px; }
 
 /* Narrow phones: keep the bar on one line */
 @media (max-width: 380px) {
