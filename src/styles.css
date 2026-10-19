@@ -685,6 +685,10 @@ input[type="time"], input[type="date"], input[type="number"] {
   position: relative;
 }
 .install-banner button::after { content: ""; position: absolute; inset: -4px 0; }
+.banner-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; flex-shrink: 0; }
+.install-banner button.primary { background: var(--tint); color: var(--on-tint); }
+.backup-reminder { flex-wrap: wrap; }
+.backup-reminder > span { flex: 1 1 12rem; }
 
 /* Settings panel (baby): grouped sections */
 .settings-card {

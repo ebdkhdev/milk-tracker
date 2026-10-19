@@ -6,6 +6,7 @@ const UNIT_KEY = 'suivi-lait-unit-v1'
 const REMINDER_KEY = 'suivi-lait-reminder-v1'
 const QUICK_KEY = 'suivi-lait-quick-v1'
 const MILK_KEY = 'suivi-lait-milk-v1'
+const BACKUP_KEY = 'suivi-lait-backup-v1'
 
 export const ML_PER_OZ = 29.5735
 export const DAILY_MIN_ML = 600 // minimum quantité de lait par jour
@@ -79,4 +80,33 @@ export function loadMilk(): MilkPrefs {
 }
 export function saveMilk(m: MilkPrefs) {
   try { localStorage.setItem(MILK_KEY, JSON.stringify(m)) } catch (e) {}
+}
+
+// Backup reminder: date of the last successful export, and a snooze ("Plus tard").
+export type BackupState = { last: string | null; snoozeUntil: string | null }
+export const BACKUP_EVERY_DAYS = 30
+export const BACKUP_FIRST_DAYS = 14 // without any export, remind once the oldest bottle is this old
+export const BACKUP_SNOOZE_DAYS = 7
+export function loadBackupState(): BackupState {
+  try {
+    const b = JSON.parse(localStorage.getItem(BACKUP_KEY) || 'null')
+    if (b && typeof b === 'object') return { last: typeof b.last === 'string' ? b.last : null, snoozeUntil: typeof b.snoozeUntil === 'string' ? b.snoozeUntil : null }
+  } catch (e) {}
+  return { last: null, snoozeUntil: null }
+}
+export function saveBackupState(b: BackupState) {
+  try { localStorage.setItem(BACKUP_KEY, JSON.stringify(b)) } catch (e) {}
+}
+const DAY_MS = 24 * 3600 * 1000
+// null when no reminder is due; otherwise the days since the last export (0 = never exported)
+export function backupDue(b: BackupState, feeds: Feed[], now: Date): { days: number } | null {
+  if (feeds.length === 0) return null
+  if (b.snoozeUntil && Date.parse(b.snoozeUntil) > now.getTime()) return null
+  if (b.last) {
+    const days = Math.floor((now.getTime() - Date.parse(b.last)) / DAY_MS)
+    return days >= BACKUP_EVERY_DAYS ? { days } : null
+  }
+  const oldest = feeds.reduce((min, f) => (f.date < min ? f.date : min), feeds[0].date)
+  const [y, m, d] = oldest.split('-').map(Number)
+  return now.getTime() - new Date(y, m - 1, d).getTime() >= BACKUP_FIRST_DAYS * DAY_MS ? { days: 0 } : null
 }

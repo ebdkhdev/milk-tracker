@@ -1,6 +1,7 @@
 import { ClientOnly, createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AddFeed } from '#/components/AddFeed'
+import { BackupReminder } from '#/components/BackupReminder'
 import { BabySettings } from '#/components/BabySettings'
 import { DayNav } from '#/components/DayNav'
 import { FeedList } from '#/components/FeedList'
@@ -26,8 +27,8 @@ import { FormatProvider, useFormat } from '#/lib/format'
 import { RTL_LANGS, loadLang, makeT, saveLang } from '#/lib/i18n'
 import type { Lang, T, Unit } from '#/lib/i18n'
 import { notificationsAvailable, reminderIsDue, showReminderNotification } from '#/lib/reminder'
-import { isDefaultQuick, loadMilk, loadQuick, loadReminder, loadUnit, saveMilk, saveQuick, saveReminder, saveUnit, suggestQuick } from '#/lib/settings'
-import type { MilkPrefs } from '#/lib/settings'
+import { BACKUP_SNOOZE_DAYS, backupDue, isDefaultQuick, loadBackupState, loadMilk, saveBackupState, loadQuick, loadReminder, loadUnit, saveMilk, saveQuick, saveReminder, saveUnit, suggestQuick } from '#/lib/settings'
+import type { BackupState, MilkPrefs } from '#/lib/settings'
 import type { Reminder } from '#/lib/settings'
 
 // Everything depends on browser storage and the local clock: render on the client only.
@@ -50,6 +51,7 @@ function App() {
   const [baby, setBabyState] = useState<Baby>(loadBaby)
   const [quick, setQuickState] = useState<number[]>(loadQuick)
   const [milk, setMilkState] = useState<MilkPrefs>(loadMilk)
+  const [backup, setBackupState] = useState<BackupState>(loadBackupState)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [viewDate, setViewDate] = useState(() => new Date())
   const [customTime, setCustomTime] = useState('')
@@ -209,7 +211,11 @@ function App() {
   const exportData = () => {
     const text = buildBackup(allFeeds, allDaily || [], baby, quick)
     shareOrDownload(text, t('exportFile', { date: todayStr(new Date()) }))
-      .then((r) => { if (r === 'done') showToast(t('exported')) })
+      .then((r) => {
+        if (r !== 'done') return
+        setBackup({ last: new Date().toISOString(), snoozeUntil: null })
+        showToast(t('exported'))
+      })
       .catch((e) => console.error('Erreur export', e))
   }
 
@@ -241,6 +247,8 @@ function App() {
   }
 
   const setMilk = (m: MilkPrefs) => { saveMilk(m); setMilkState(m) }
+  const setBackup = (b: BackupState) => { saveBackupState(b); setBackupState(b) }
+  const backupReminder = ready && allDaily ? backupDue(backup, allFeeds, now) : null
 
   const setReminder = (enabled: boolean, time: string | null) => {
     const next = { ...reminder, enabled, time: time || reminder.time }
@@ -274,7 +282,16 @@ function App() {
             onImport={importData}
           />
         ) : null}
-        <InstallBanner />
+        {/* one banner at a time: the backup reminder (data safety) wins over the install hint */}
+        {backupReminder ? (
+          <BackupReminder
+            days={backupReminder.days}
+            onExport={exportData}
+            onLater={() => setBackup({ ...backup, snoozeUntil: new Date(Date.now() + BACKUP_SNOOZE_DAYS * 24 * 3600 * 1000).toISOString() })}
+          />
+        ) : (
+          <InstallBanner />
+        )}
         <DayNav viewDate={viewDate} onGo={goToDate} />
         <TotalCard
           totalMl={entries.reduce((s, e) => s + e.ml, 0)}

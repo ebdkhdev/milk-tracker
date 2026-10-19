@@ -6,7 +6,7 @@ import { results } from './lib/assert.mjs'
 import { findChrome } from './lib/browser.mjs'
 
 const DIST = fileURLToPath(new URL('../dist/client', import.meta.url))
-const SUITES = ['app', 'backup', 'baby', 'settings', 'rhythm', 'install', 'layout', 'contrast', 'upgrade']
+const SUITES = ['app', 'backup', 'baby', 'settings', 'rhythm', 'reminder', 'install', 'layout', 'contrast', 'upgrade']
 
 if (!existsSync(DIST + '/index.html')) { console.error('dist/client is missing: run npm run build first'); process.exit(1) }
 if (!findChrome()) { console.error('Chrome not found: set CHROME_PATH'); process.exit(1) }
