@@ -1,5 +1,5 @@
 import { ClientOnly, createFileRoute } from '@tanstack/react-router'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { AddFeed } from '#/components/AddFeed'
 import { BabySettings } from '#/components/BabySettings'
 import { DayNav } from '#/components/DayNav'
@@ -8,19 +8,22 @@ import { Header } from '#/components/Header'
 import { InstallBanner } from '#/components/InstallBanner'
 import { Stats } from '#/components/Stats'
 import type { DayRow } from '#/components/Stats'
+import { Toast } from '#/components/Toast'
+import type { ToastMsg } from '#/components/Toast'
 import { TotalCard } from '#/components/TotalCard'
 import { VitaminDCard } from '#/components/VitaminDCard'
+import { buildBackup, parseBackup, shareOrDownload } from '#/lib/backup'
 import { loadBaby, minimumFor, saveBaby } from '#/lib/baby'
 import type { Baby } from '#/lib/baby'
 import { isToday, nowHHMM, parseDay, timeOnDate, todayStr } from '#/lib/dates'
 import {
-  dbAdd, dbDelete, dbGetAll, dbGetAllDaily, dbGetByDate, dbGetDaily, dbPut, dbPutDaily,
+  dbAdd, dbDelete, dbGetAll, dbGetAllDaily, dbGetByDate, dbGetDaily, dbImport, dbPut, dbPutDaily,
   migrateFromLocalStorage, newId,
 } from '#/lib/db'
 import type { Daily, Feed } from '#/lib/db'
 import { FormatProvider, useFormat } from '#/lib/format'
 import { RTL_LANGS, loadLang, makeT, saveLang } from '#/lib/i18n'
-import type { Lang, Unit } from '#/lib/i18n'
+import type { Lang, T, Unit } from '#/lib/i18n'
 import { notificationsAvailable, reminderIsDue, showReminderNotification } from '#/lib/reminder'
 import { loadReminder, loadUnit, saveReminder, saveUnit } from '#/lib/settings'
 import type { Reminder } from '#/lib/settings'
@@ -56,13 +59,27 @@ function App() {
   const [dayRecord, setDayRecord] = useState<Daily | null>(null)
   const [allFeeds, setAllFeeds] = useState<Feed[]>([])
   const [allDaily, setAllDaily] = useState<Daily[] | null>(null)
+  const [toast, setToast] = useState<ToastMsg | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const dateStr = todayStr(viewDate)
   const viewingToday = isToday(dateStr)
-  const bump = () => setRev((r) => r + 1)
+  const t = useMemo(() => makeT(lang), [lang])
+  // the clock is refreshed too, so "last bottle" never reads a time ahead of `now`
+  const bump = () => { setRev((r) => r + 1); setNow(new Date()) }
+
+  // One message at a time; a new one replaces the previous (and its undo).
+  const showToast = (text: string, undo?: () => void) => {
+    clearTimeout(toastTimer.current)
+    setToast({ id: Date.now(), text, undo })
+    toastTimer.current = setTimeout(() => setToast(null), undo ? 6000 : 3000)
+  }
+  useEffect(() => () => clearTimeout(toastTimer.current), [])
 
   useEffect(() => {
     migrateFromLocalStorage().then(() => setReady(true))
+    // ask the browser not to evict our data under storage pressure (best effort, no prompt on most browsers)
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {})
     if ('serviceWorker' in navigator && import.meta.env.PROD) {
       navigator.serviceWorker.register('/sw.js').catch((e) => console.error('SW', e))
     }
@@ -108,8 +125,8 @@ function App() {
     const next = { ...reminder, lastNotified: today }
     saveReminder(next)
     setReminderState(next)
-    showReminderNotification(makeT(lang))
-  }, [due, today, reminder, lang])
+    showReminderNotification(t)
+  }, [due, today, reminder, t])
 
   const rows = useMemo<DayRow[]>(() => {
     const byDate: Record<string, Feed[]> = {}
@@ -158,8 +175,38 @@ function App() {
       .catch((e) => console.error('Erreur de modification', e))
   }
 
+  // Deleted right away (nothing is lost if the app is closed), then restored as-is on undo.
   const removeEntry = (id: string) => {
-    dbDelete(id).then(bump).catch((e) => console.error('Erreur de suppression', e))
+    const entry = entries.find((e) => e.id === id)
+    dbDelete(id)
+      .then(() => {
+        bump()
+        if (entry) showToast(t('deleted'), () => { dbPut(entry).then(bump).catch((e) => console.error("Erreur d'annulation", e)) })
+      })
+      .catch((e) => console.error('Erreur de suppression', e))
+  }
+
+  // Built from the data already in state so share() stays inside the click (required by Safari).
+  const exportData = () => {
+    const text = buildBackup(allFeeds, allDaily || [], baby)
+    shareOrDownload(text, t('exportFile', { date: todayStr(new Date()) }))
+      .then((r) => { if (r === 'done') showToast(t('exported')) })
+      .catch((e) => console.error('Erreur export', e))
+  }
+
+  const importData = (file: File) => {
+    file
+      .text()
+      .then((text) => {
+        const parsed = parseBackup(text)
+        if (!parsed) { showToast(t('importError')); return }
+        return dbImport(parsed.feeds, parsed.daily).then(() => {
+          if (parsed.baby) { saveBaby(parsed.baby); setBabyState(parsed.baby) }
+          bump()
+          showToast(t('imported', { n: parsed.feeds.length }) + (parsed.skipped ? t('importSkipped', { n: parsed.skipped }) : ''))
+        })
+      })
+      .catch((e) => { console.error('Erreur import', e); showToast(t('importError')) })
   }
 
   const toggleVitaminD = () => {
@@ -195,6 +242,8 @@ function App() {
             baby={baby}
             onChange={(b) => { saveBaby(b); setBabyState(b) }}
             onClose={() => setSettingsOpen(false)}
+            onExport={exportData}
+            onImport={importData}
           />
         ) : null}
         <InstallBanner />
@@ -205,6 +254,7 @@ function App() {
           dateStr={dateStr}
           minMl={minimumFor(baby, dateStr)}
           birthDate={baby.birthDate}
+          lastFeed={viewingToday ? lastFeedText(allFeeds, now, t) : null}
         />
         <VitaminDCard
           record={dayRecord}
@@ -225,8 +275,27 @@ function App() {
         />
         <Footer />
       </div>
+      <Toast toast={toast} onDone={() => { clearTimeout(toastTimer.current); setToast(null) }} />
     </FormatProvider>
   )
+}
+
+// "Last bottle 2 h 40 min ago", from the latest feed of any day; hidden after 24 h.
+// Feeds edited to a time in the future are ignored.
+function lastFeedText(feeds: Feed[], now: Date, t: T): string | null {
+  const nowMs = now.getTime()
+  let last = -1
+  for (const f of feeds) {
+    const ms = Date.parse(f.time)
+    if (ms <= nowMs + 60 * 1000 && ms > last) last = ms
+  }
+  if (last < 0) return null
+  const mins = Math.max(0, Math.floor((nowMs - last) / 60000))
+  if (mins >= 24 * 60) return null
+  if (mins < 1) return t('lastFeedNow')
+  const h = Math.floor(mins / 60), m = mins % 60
+  const d = h === 0 ? t('durM', { m }) : m === 0 ? t('durH', { h }) : t('durHM', { h, m })
+  return t('lastFeed', { d })
 }
 
 function Footer() {

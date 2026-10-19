@@ -69,6 +69,21 @@ export const dbGetDaily = (date: string) =>
 export const dbPutDaily = (record: Daily) => write(DAILY_STORE, (s) => s.put(record))
 export const dbGetAllDaily = () => read<Daily[]>(DAILY_STORE, (s) => s.getAll()).then((r) => r || [])
 
+// Import from a backup: one transaction over both stores, put() so existing ids are overwritten, never duplicated.
+export function dbImport(feeds: Feed[], daily: Daily[]): Promise<void> {
+  return openDb().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction([STORE, DAILY_STORE], 'readwrite')
+        const fs = tx.objectStore(STORE), ds = tx.objectStore(DAILY_STORE)
+        feeds.forEach((f) => fs.put(f))
+        daily.forEach((d) => ds.put(d))
+        tx.oncomplete = () => resolve()
+        tx.onerror = () => reject(tx.error)
+      }),
+  )
+}
+
 export function newId() {
   return Date.now() + '-' + Math.random().toString(36).slice(2, 7)
 }

@@ -7,7 +7,7 @@ export function Header({ onLang, onUnit, settingsOpen, onSettings }: Props) {
   const { t, lang, unit } = useFormat()
   return (
     <header>
-      <div className="brand">🍼 Milk Tracker</div>
+      <div className="brand">🍼 <span className="brand-name">Milk Tracker</span></div>
       <div className="header-controls">
         <select
           id="lang-select"

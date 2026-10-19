@@ -3,10 +3,17 @@ import { useFormat } from '#/lib/format'
 
 const RING_R = 52
 
-type Props = { totalMl: number; count: number; dateStr: string; minMl: number; birthDate: string | null }
+type Props = {
+  totalMl: number
+  count: number
+  dateStr: string
+  minMl: number
+  birthDate: string | null
+  lastFeed: string | null
+}
 
 // minMl is the minimum for the viewed day (dateStr); with a birth date the baby's age that day is shown next to it.
-export function TotalCard({ totalMl, count, dateStr, minMl, birthDate }: Props) {
+export function TotalCard({ totalMl, count, dateStr, minMl, birthDate, lastFeed }: Props) {
   const { t, unitLabel, mlToDisplay, formatAmount } = useFormat()
   const age = birthDate ? formatAge(t, birthDate, dateStr) : null
   const reached = totalMl >= minMl
@@ -52,6 +59,7 @@ export function TotalCard({ totalMl, count, dateStr, minMl, birthDate }: Props) 
         <span>0</span>
         <span id="goal-target">{age ? t('minTargetAge', { v: formatAmount(minMl), age }) : t('minTarget', { v: formatAmount(minMl) })}</span>
       </div>
+      {lastFeed ? <div className="last-feed" id="last-feed">{lastFeed}</div> : null}
     </div>
   )
 }

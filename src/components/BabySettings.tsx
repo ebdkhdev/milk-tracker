@@ -4,9 +4,15 @@ import { todayStr } from '#/lib/dates'
 import { useFormat } from '#/lib/format'
 import { DAILY_MIN_ML } from '#/lib/settings'
 
-type Props = { baby: Baby; onChange: (b: Baby) => void; onClose: () => void }
+type Props = {
+  baby: Baby
+  onChange: (b: Baby) => void
+  onClose: () => void
+  onExport: () => void
+  onImport: (file: File) => void
+}
 
-export function BabySettings({ baby, onChange, onClose }: Props) {
+export function BabySettings({ baby, onChange, onClose, onExport, onImport }: Props) {
   const { t, unitLabel, mlToDisplay, displayToMl, formatAmount } = useFormat()
   const today = todayStr(new Date())
   const current = tierIndexFor(baby, today)
@@ -79,6 +85,27 @@ export function BabySettings({ baby, onChange, onClose }: Props) {
       >
         {t('resetTiers')}
       </button>
+
+      <p className="settings-sub">{t('dataTitle')}</p>
+      <div className="data-row">
+        <button className="data-btn" id="export-btn" onClick={onExport}>{t('exportBtn')}</button>
+        <label className="data-btn" id="import-btn">
+          {t('importBtn')}
+          {/* no MIME check: iOS often reports an empty type for .json files; the content is validated instead */}
+          <input
+            type="file"
+            id="import-file"
+            accept=".json,application/json"
+            className="visually-hidden"
+            onChange={(e) => {
+              const f = e.target.files && e.target.files[0]
+              e.target.value = ''
+              if (f) onImport(f)
+            }}
+          />
+        </label>
+      </div>
+      <p className="settings-note">{t('dataNote')}</p>
     </section>
   )
 }
