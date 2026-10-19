@@ -52,6 +52,14 @@ export async function run(DIST) {
     await sleep(500)
     equal('importing twice does not duplicate', [await b.count('.feed-item'), await b.text('#total-number')], [2, '150'])
 
+    // an old backup made before the birth date was set must not clear this phone's settings
+    const old = join(dir, 'old.json')
+    writeFileSync(old, JSON.stringify({ ...data, baby: { birthDate: null, tiersMl: [1, 2, 3, 4, 5] } }))
+    await b.click('#tiers-reset'); await sleep(100)
+    await setFile(old)
+    await b.waitFor(`(document.querySelector("#toast .toast-text")||{}).textContent==="2 biberons importés"`)
+    equal('existing baby settings are kept', [await b.ev(`document.getElementById("birth-date").value`), await b.ev(`[...document.querySelectorAll("#tiers input")].map(i=>i.value).join(",")`)], ['2026-01-15', '500,600,700,750,700'])
+
     const bad = join(dir, 'bad.json')
     writeFileSync(bad, '{"hello": 1}')
     await setFile(bad)

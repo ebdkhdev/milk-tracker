@@ -201,7 +201,8 @@ function App() {
         const parsed = parseBackup(text)
         if (!parsed) { showToast(t('importError')); return }
         return dbImport(parsed.feeds, parsed.daily).then(() => {
-          if (parsed.baby) { saveBaby(parsed.baby); setBabyState(parsed.baby) }
+          // a new phone (no birth date yet) takes the file's baby settings; otherwise this phone's settings win
+          if (parsed.baby && !baby.birthDate) { saveBaby(parsed.baby); setBabyState(parsed.baby) }
           bump()
           showToast(t('imported', { n: parsed.feeds.length }) + (parsed.skipped ? t('importSkipped', { n: parsed.skipped }) : ''))
         })
