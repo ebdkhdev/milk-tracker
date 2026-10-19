@@ -1,5 +1,5 @@
 import { ClientOnly, createFileRoute } from '@tanstack/react-router'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { AddFeed } from '#/components/AddFeed'
 import { DayNav } from '#/components/DayNav'
 import { FeedList } from '#/components/FeedList'
@@ -63,7 +63,8 @@ function App() {
     }
   }, [])
 
-  useEffect(() => {
+  // before paint, so Arabic never flashes left-to-right
+  useLayoutEffect(() => {
     document.documentElement.lang = lang
     document.documentElement.dir = RTL_LANGS.includes(lang) ? 'rtl' : 'ltr'
   }, [lang])
