@@ -13,9 +13,10 @@ import type { ToastMsg } from '#/components/Toast'
 import { TotalCard } from '#/components/TotalCard'
 import { VitaminDCard } from '#/components/VitaminDCard'
 import { buildBackup, parseBackup, shareOrDownload } from '#/lib/backup'
+import { averageInterval, feedingRhythm } from '#/lib/rhythm'
 import { loadBaby, minimumFor, saveBaby } from '#/lib/baby'
 import type { Baby } from '#/lib/baby'
-import { isToday, nowHHMM, parseDay, timeOnDate, todayStr } from '#/lib/dates'
+import { formatTime, isToday, nowHHMM, parseDay, timeOnDate, todayStr } from '#/lib/dates'
 import {
   dbAdd, dbDelete, dbGetAll, dbGetAllDaily, dbGetByDate, dbGetDaily, dbImport, dbPut, dbPutDaily,
   migrateFromLocalStorage, newId,
@@ -155,6 +156,12 @@ function App() {
     return out
   }, [allFeeds, allDaily, period, now, baby])
 
+  // average interval over the stats period (from the start of its first day to now)
+  const periodInterval = useMemo(() => {
+    const from = parseDay(rows[rows.length - 1].date).getTime()
+    return averageInterval(allFeeds, from, now.getTime() + 60 * 1000)
+  }, [allFeeds, rows, now])
+
   // Always change the viewed day through here: clamps to today, leaves edit mode, pre-fills the past-day time.
   const goToDate = useCallback((d: Date) => {
     const t = new Date()
@@ -276,6 +283,7 @@ function App() {
           minMl={minimumFor(baby, dateStr)}
           birthDate={baby.birthDate}
           lastFeed={viewingToday ? lastFeedText(allFeeds, now, t) : null}
+          rhythm={viewingToday ? rhythmText(allFeeds, now, t) : null}
         />
         <VitaminDCard
           record={dayRecord}
@@ -292,6 +300,7 @@ function App() {
           period={period}
           viewing={dateStr}
           onPeriod={setPeriod}
+          avgIntervalMin={periodInterval}
           onOpen={(ds) => { goToDate(parseDay(ds)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
         />
         <Footer />
@@ -314,9 +323,20 @@ function lastFeedText(feeds: Feed[], now: Date, t: T): string | null {
   const mins = Math.max(0, Math.floor((nowMs - last) / 60000))
   if (mins >= 24 * 60) return null
   if (mins < 1) return t('lastFeedNow')
+  return t('lastFeed', { d: durationText(mins, t) })
+}
+
+function durationText(mins: number, t: T) {
   const h = Math.floor(mins / 60), m = mins % 60
-  const d = h === 0 ? t('durM', { m }) : m === 0 ? t('durH', { h }) : t('durHM', { h, m })
-  return t('lastFeed', { d })
+  return h === 0 ? t('durM', { m }) : m === 0 ? t('durH', { h }) : t('durHM', { h, m })
+}
+
+// "Every 3 h 10 min on average · next around 14:30" (see lib/rhythm.ts for the rules)
+function rhythmText(feeds: Feed[], now: Date, t: T): string | null {
+  const r = feedingRhythm(feeds, now)
+  if (!r) return null
+  const vars = { d: durationText(Math.round(r.avgMin), t), time: formatTime(r.next.toISOString()) }
+  return r.next.getTime() < now.getTime() ? t('rhythmLate', vars) : t('rhythm', vars)
 }
 
 function Footer() {

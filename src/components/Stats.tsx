@@ -18,9 +18,10 @@ type Props = {
   viewing: string
   onPeriod: (p: 7 | 30) => void
   onOpen: (dateStr: string) => void
+  avgIntervalMin: number | null
 }
 
-export function Stats({ rows, period, viewing, onPeriod, onOpen }: Props) {
+export function Stats({ rows, period, viewing, onPeriod, onOpen, avgIntervalMin }: Props) {
   const { t, formatAmount } = useFormat()
   const shared = sharedMin(rows)
   return (
@@ -35,7 +36,7 @@ export function Stats({ rows, period, viewing, onPeriod, onOpen }: Props) {
           ))}
         </div>
       </div>
-      <StatTiles rows={rows} />
+      <StatTiles rows={rows} avgIntervalMin={avgIntervalMin} />
 
       <p className="section-label" id="history-label">
         {shared !== null ? t('historyLabel', { v: formatAmount(shared) }) : t('historyLabelVar')}
@@ -58,7 +59,7 @@ function Tile({ value, unit, label, cls }: { value: ReactNode; unit?: string; la
 }
 
 // Averages are over days that have at least one feed; vitamin D is counted over the whole period.
-function StatTiles({ rows }: { rows: DayRow[] }) {
+function StatTiles({ rows, avgIntervalMin }: { rows: DayRow[]; avgIntervalMin: number | null }) {
   const { t, locale, unitLabel: u, mlToDisplay, formatAmount } = useFormat()
   const withData = rows.filter((r) => r.count > 0)
   const n = withData.length
@@ -107,6 +108,7 @@ function StatTiles({ rows }: { rows: DayRow[] }) {
           cls={vitd === days ? 'good' : vitd < days / 2 ? 'bad' : ''}
         />
         <Tile value={mlToDisplay(best)} unit={u} label={t('statBest', { date: bestLabel })} />
+        {avgIntervalMin !== null ? <Tile value={formatHM(avgIntervalMin)} unit={t('hourShort')} label={t('statInterval')} /> : null}
         {typedMl > 0 ? <Tile value={Math.round((breastMl / typedMl) * 100)} unit="%" label={t('statBreast')} /> : null}
       </div>
       <p className="stats-note" id="stats-note">{t('statsNote', { n, total: days })}</p>
@@ -154,4 +156,10 @@ function History({ rows, viewing, onOpen }: { rows: DayRow[]; viewing: string; o
       })}
     </div>
   )
+}
+
+// 190 min -> "3:10" (shown with an "h" unit)
+export function formatHM(min: number) {
+  const m = Math.round(min)
+  return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0')
 }
