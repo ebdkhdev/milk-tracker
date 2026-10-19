@@ -12,11 +12,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm install
 npm run dev          # dev server on http://localhost:3000 (no service worker in dev)
 npm run typecheck    # tsc --noEmit
+npm test             # build, then the end-to-end suite in headless Chrome (tests/)
 npm run build        # vite build + scripts/build-sw.mjs -> dist/client (static site)
 python3 -m http.server 8000 -d dist/client   # serve the production build (needed to test the service worker)
 ```
 
-There is no test suite or linter.
+There is no linter. `npm test` runs `tests/run.mjs` against `dist/client` in a local headless Chrome (set `CHROME_PATH` if it is not found; no npm dependencies): main flow, backup, age-based minimum, iOS install hint, layout (touch targets, 200% text, 320px), WCAG contrast (colours parsed from `src/styles.css`, glass panels measured on the rendered backdrop pixels) and the upgrade from `v1.0.0` (needs the git tag). Run one suite with `node tests/run.mjs <name>`. Every check is an assertion and the run exits non-zero on failure; add checks there when you change behaviour.
 
 Deploy to production (project is already linked via `.vercel/project.json`):
 
@@ -34,7 +35,7 @@ Production URL: https://suivi-lait.vercel.app (the Vercel project keeps its old 
 
 **Client-only rendering.** SPA mode prerenders only the shell to `dist/client/index.html` (`vite.config.ts`). The `/` route has `ssr: false`, `wrapInSuspense: true` and renders `App` inside `<ClientOnly>`: this combination makes the first client render match the empty prerendered boundary (otherwise React throws hydration error #418). Anything touching `window`, `localStorage`, `indexedDB` or `navigator` must only run inside `App` or its children, never at module top level or in `__root.tsx`.
 
-**Legacy identifiers.** The storage keys below (`suivi-lait-db`, `suivi-lait-unit-v1`, `suivi-lait-reminder-v1`, `suivi-lait-lang-v1`, `suivi-lait-baby-v1`, `suivi-lait-data-v1`) keep the old name deliberately. Renaming them would orphan existing users' data. Do not rename them.
+**Legacy identifiers.** The storage keys below (`suivi-lait-db`, `suivi-lait-unit-v1`, `suivi-lait-reminder-v1`, `suivi-lait-lang-v1`, `suivi-lait-baby-v1`, `suivi-lait-data-v1`) keep the old name deliberately (newer keys such as `suivi-lait-ios-hint-v1` use the same prefix for consistency). Renaming them would orphan existing users' data. Do not rename them.
 
 **Data model.** IndexedDB database `suivi-lait-db` (version 2) with two object stores:
 - `feeds` (keyPath `id`, index `by_date` on `date`): one record per bottle, `{ id, date: "YYYY-MM-DD", ml: number, time: ISO string }`. Millilitres are the canonical unit; ounces are a display-only conversion (`ML_PER_OZ = 29.5735`).
@@ -47,6 +48,12 @@ The chosen unit is persisted in `localStorage` under `suivi-lait-unit-v1`.
 **Migration.** On boot, `migrateFromLocalStorage()` imports any data from the pre-IndexedDB key `suivi-lait-data-v1` and then deletes that key. Keep this path working if the schema changes. If you change the IndexedDB schema, bump `DB_VERSION` and handle it in `onupgradeneeded`.
 
 **State and data flow.** `App` keeps the settings (lang, unit, reminder), `viewDate`, `editingId`, `period` and a `now` clock in React state. Every write to IndexedDB ends with `bump()`, which increments `rev`; effects keyed on `rev` reload the viewed day (`dbGetByDate` + `dbGetDaily`) and all records for stats/history (`dbGetAll` + `dbGetAllDaily`). Always change the viewed day through `goToDate()`, which clamps to today, clears edit mode, and pre-fills the past-day time input.
+
+**Undo, last bottle, toasts.** `removeEntry` deletes right away, then `showToast()` offers "Annuler", which `dbPut`s the same record back (same id and time); only the latest deletion is undoable, for 6 s. `components/Toast.tsx` is a bottom glass toast inside an always-mounted `role="status"` live region, also used for backup results. The total card shows "Dernier biberon il y a …" (`lastFeedText` in `routes/index.tsx`) from the most recent feed of any day, only when viewing today, hidden after 24 h, ignoring feeds in the future; `bump()` also refreshes `now` so a feed just added never looks ahead of the clock.
+
+**Backup.** The ⚙ panel has Export / Import (`lib/backup.ts`). Export builds `{ app: "milk-tracker", version: 1, exportedAt, feeds, daily, baby }` from the data already in state and calls `navigator.share` with a file on touch devices (iCloud Drive, mail) or downloads it elsewhere; it must stay synchronous inside the click, because Safari refuses `share()` after an `await`. Import validates every row (date, ml, time), skips and counts bad ones, merges with `dbImport` (one transaction over both stores, `put` so re-importing never duplicates), and restores the baby settings if present. On boot the app calls `navigator.storage.persist()` (best effort).
+
+**Install hint.** Chromium fires `beforeinstallprompt` (the "Installer" banner); Safari never does, so on iOS/iPadOS outside standalone mode `InstallBanner` shows written instructions instead, dismissable and remembered in `suivi-lait-ios-hint-v1`. Installing matters on iOS: Safari may evict a non-installed site's storage after weeks without use.
 
 **Past days and editing.** Feeds added while viewing a past day take their time from the `#custom-time` input (shown only when `.custom-row` has the `past` class); today uses the current time (see `addEntry`). `editingId` puts one feed item into inline edit mode (`EditItem`: amount in the current unit + HH:MM), saved through `updateEntry()` which rewrites the record via `dbPut`. The day label opens a hidden `<input type="date">` and history rows call `goToDate()`.
 

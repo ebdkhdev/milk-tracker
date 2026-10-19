@@ -10,7 +10,8 @@
     "generate-routes": "tsr generate",
     "build": "vite build && node scripts/build-sw.mjs",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node tests/run.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "1.170.45",
