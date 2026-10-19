@@ -2,10 +2,14 @@ import type { ReactNode } from 'react'
 import { isToday, parseDay } from '#/lib/dates'
 import type { Daily } from '#/lib/db'
 import { useFormat } from '#/lib/format'
-import { DAILY_MIN_ML } from '#/lib/settings'
 
-// Per-day aggregates for the selected period, most recent day first.
-export type DayRow = { date: string; totalMl: number; count: number; daily: Daily | null }
+// Per-day aggregates for the selected period, most recent day first. minMl is that day's minimum (it depends on the baby's age).
+export type DayRow = { date: string; totalMl: number; count: number; daily: Daily | null; minMl: number }
+
+// The single minimum shared by every row, or null when it changes within the period.
+function sharedMin(rows: DayRow[]) {
+  return rows.every((r) => r.minMl === rows[0].minMl) ? rows[0].minMl : null
+}
 
 type Props = {
   rows: DayRow[]
@@ -17,6 +21,7 @@ type Props = {
 
 export function Stats({ rows, period, viewing, onPeriod, onOpen }: Props) {
   const { t, formatAmount } = useFormat()
+  const shared = sharedMin(rows)
   return (
     <>
       <div className="section-head">
@@ -31,7 +36,9 @@ export function Stats({ rows, period, viewing, onPeriod, onOpen }: Props) {
       </div>
       <StatTiles rows={rows} />
 
-      <p className="section-label" id="history-label">{t('historyLabel', { v: formatAmount(DAILY_MIN_ML) })}</p>
+      <p className="section-label" id="history-label">
+        {shared !== null ? t('historyLabel', { v: formatAmount(shared) }) : t('historyLabelVar')}
+      </p>
       <History rows={rows} viewing={viewing} onOpen={onOpen} />
     </>
   )
@@ -62,17 +69,20 @@ function StatTiles({ rows }: { rows: DayRow[] }) {
       </>
     )
   }
-  let sumMl = 0, sumCount = 0, reached = 0, best = 0
+  let sumMl = 0, sumCount = 0, sumMin = 0, reached = 0, best = 0
   let bestDay: string | null = null
   withData.forEach((r) => {
     sumMl += r.totalMl
     sumCount += r.count
-    if (r.totalMl >= DAILY_MIN_ML) reached++
+    sumMin += r.minMl
+    if (r.totalMl >= r.minMl) reached++
     if (r.totalMl > best) { best = r.totalMl; bestDay = r.date }
   })
   const vitd = rows.filter((r) => r.daily && r.daily.vitaminD).length
   const days = rows.length
   const avgDay = sumMl / n
+  const avgMin = sumMin / n
+  const shared = sharedMin(rows)
   const avgBottle = sumCount ? sumMl / sumCount : 0
   const avgCount = sumCount / n
   const bestLabel = bestDay ? parseDay(bestDay).toLocaleDateString(locale, { day: 'numeric', month: 'short' }) : ''
@@ -80,10 +90,10 @@ function StatTiles({ rows }: { rows: DayRow[] }) {
   return (
     <>
       <div className="stats-grid" id="stats-grid">
-        <Tile value={mlToDisplay(avgDay)} unit={u} label={t('statAvgDay')} cls={avgDay >= DAILY_MIN_ML ? 'good' : 'bad'} />
+        <Tile value={mlToDisplay(avgDay)} unit={u} label={t('statAvgDay')} cls={avgDay >= avgMin ? 'good' : 'bad'} />
         <Tile
           value={reached + '/' + n}
-          label={t('statDaysReached', { v: formatAmount(DAILY_MIN_ML) })}
+          label={shared !== null ? t('statDaysReached', { v: formatAmount(shared) }) : t('statDaysReachedVar')}
           cls={reached === n ? 'good' : reached < n / 2 ? 'bad' : ''}
         />
         <Tile value={Math.round(avgCount * 10) / 10} label={t('statPerDay')} />
@@ -102,8 +112,8 @@ function StatTiles({ rows }: { rows: DayRow[] }) {
 
 function History({ rows, viewing, onOpen }: { rows: DayRow[]; viewing: string; onOpen: (d: string) => void }) {
   const { t, locale, formatAmount } = useFormat()
-  // scale leaves ~10% headroom so the minimum marker never sits on the edge
-  const max = Math.max(...rows.map((r) => r.totalMl), DAILY_MIN_ML) * 1.1
+  // scale leaves ~10% headroom so the minimum markers never sit on the edge
+  const max = Math.max(...rows.map((r) => Math.max(r.totalMl, r.minMl))) * 1.1
   return (
     <div className="history" id="history">
       {rows.map((r) => {
@@ -125,13 +135,13 @@ function History({ rows, viewing, onOpen }: { rows: DayRow[]; viewing: string; o
             <div className={'hdot' + (vitGiven ? ' done' : '')} title={vitGiven ? t('vitdDotGiven') : t('vitdDotNot')}></div>
             <div className="bar-track">
               <div
-                className={'bar-fill' + (r.totalMl >= DAILY_MIN_ML ? ' reached' : '')}
+                className={'bar-fill' + (r.totalMl >= r.minMl ? ' reached' : '')}
                 style={{ width: (max > 0 ? Math.round((r.totalMl / max) * 100) : 0) + '%' }}
               ></div>
               <div
                 className="bar-goal"
-                style={{ insetInlineStart: Math.round((DAILY_MIN_ML / max) * 100) + '%' }}
-                title={t('minMarker', { v: formatAmount(DAILY_MIN_ML) })}
+                style={{ insetInlineStart: Math.round((r.minMl / max) * 100) + '%' }}
+                title={t('minMarker', { v: formatAmount(r.minMl) })}
               ></div>
             </div>
             <div className="hval">{r.totalMl > 0 ? formatAmount(r.totalMl) : '—'}</div>

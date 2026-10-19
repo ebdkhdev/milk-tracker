@@ -1,7 +1,9 @@
 import type { Lang, Unit } from '#/lib/i18n'
 import { useFormat } from '#/lib/format'
 
-export function Header({ onLang, onUnit }: { onLang: (l: Lang) => void; onUnit: (u: Unit) => void }) {
+type Props = { onLang: (l: Lang) => void; onUnit: (u: Unit) => void; settingsOpen: boolean; onSettings: () => void }
+
+export function Header({ onLang, onUnit, settingsOpen, onSettings }: Props) {
   const { t, lang, unit } = useFormat()
   return (
     <header>
@@ -25,6 +27,16 @@ export function Header({ onLang, onUnit }: { onLang: (l: Lang) => void; onUnit: 
             </button>
           ))}
         </div>
+        <button
+          id="settings-btn"
+          className={'settings-btn' + (settingsOpen ? ' active' : '')}
+          aria-label={t('settings')}
+          aria-expanded={settingsOpen}
+          title={t('settings')}
+          onClick={onSettings}
+        >
+          ⚙︎
+        </button>
       </div>
     </header>
   )

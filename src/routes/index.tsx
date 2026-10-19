@@ -1,6 +1,7 @@
 import { ClientOnly, createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { AddFeed } from '#/components/AddFeed'
+import { BabySettings } from '#/components/BabySettings'
 import { DayNav } from '#/components/DayNav'
 import { FeedList } from '#/components/FeedList'
 import { Header } from '#/components/Header'
@@ -9,6 +10,8 @@ import { Stats } from '#/components/Stats'
 import type { DayRow } from '#/components/Stats'
 import { TotalCard } from '#/components/TotalCard'
 import { VitaminDCard } from '#/components/VitaminDCard'
+import { loadBaby, minimumFor, saveBaby } from '#/lib/baby'
+import type { Baby } from '#/lib/baby'
 import { isToday, nowHHMM, parseDay, timeOnDate, todayStr } from '#/lib/dates'
 import {
   dbAdd, dbDelete, dbGetAll, dbGetAllDaily, dbGetByDate, dbGetDaily, dbPut, dbPutDaily,
@@ -39,6 +42,8 @@ function App() {
   const [lang, setLang] = useState<Lang>(loadLang)
   const [unit, setUnit] = useState<Unit>(loadUnit)
   const [reminder, setReminderState] = useState<Reminder>(loadReminder)
+  const [baby, setBabyState] = useState<Baby>(loadBaby)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [viewDate, setViewDate] = useState(() => new Date())
   const [customTime, setCustomTime] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -117,10 +122,16 @@ function App() {
       d.setDate(d.getDate() - i)
       const ds = todayStr(d)
       const list = byDate[ds] || []
-      out.push({ date: ds, totalMl: list.reduce((s, e) => s + e.ml, 0), count: list.length, daily: dailyByDate[ds] || null })
+      out.push({
+        date: ds,
+        totalMl: list.reduce((s, e) => s + e.ml, 0),
+        count: list.length,
+        daily: dailyByDate[ds] || null,
+        minMl: minimumFor(baby, ds),
+      })
     }
     return out
-  }, [allFeeds, allDaily, period, now])
+  }, [allFeeds, allDaily, period, now, baby])
 
   // Always change the viewed day through here: clamps to today, leaves edit mode, pre-fills the past-day time.
   const goToDate = useCallback((d: Date) => {
@@ -176,10 +187,25 @@ function App() {
         <Header
           onLang={(l) => { saveLang(l); setLang(l) }}
           onUnit={(u) => { saveUnit(u); setUnit(u) }}
+          settingsOpen={settingsOpen}
+          onSettings={() => setSettingsOpen((o) => !o)}
         />
+        {settingsOpen ? (
+          <BabySettings
+            baby={baby}
+            onChange={(b) => { saveBaby(b); setBabyState(b) }}
+            onClose={() => setSettingsOpen(false)}
+          />
+        ) : null}
         <InstallBanner />
         <DayNav viewDate={viewDate} onGo={goToDate} />
-        <TotalCard totalMl={entries.reduce((s, e) => s + e.ml, 0)} count={entries.length} />
+        <TotalCard
+          totalMl={entries.reduce((s, e) => s + e.ml, 0)}
+          count={entries.length}
+          dateStr={dateStr}
+          minMl={minimumFor(baby, dateStr)}
+          birthDate={baby.birthDate}
+        />
         <VitaminDCard
           record={dayRecord}
           viewingToday={viewingToday}

@@ -34,7 +34,7 @@ Production URL: https://suivi-lait.vercel.app (the Vercel project keeps its old 
 
 **Client-only rendering.** SPA mode prerenders only the shell to `dist/client/index.html` (`vite.config.ts`). The `/` route has `ssr: false`, `wrapInSuspense: true` and renders `App` inside `<ClientOnly>`: this combination makes the first client render match the empty prerendered boundary (otherwise React throws hydration error #418). Anything touching `window`, `localStorage`, `indexedDB` or `navigator` must only run inside `App` or its children, never at module top level or in `__root.tsx`.
 
-**Legacy identifiers.** The storage keys below (`suivi-lait-db`, `suivi-lait-unit-v1`, `suivi-lait-reminder-v1`, `suivi-lait-lang-v1`, `suivi-lait-data-v1`) and the `.ics` `UID ...@suivi-lait` keep the old name deliberately. Renaming them would orphan existing users' data or duplicate calendar events. Do not rename them.
+**Legacy identifiers.** The storage keys below (`suivi-lait-db`, `suivi-lait-unit-v1`, `suivi-lait-reminder-v1`, `suivi-lait-lang-v1`, `suivi-lait-baby-v1`, `suivi-lait-data-v1`) and the `.ics` `UID ...@suivi-lait` keep the old name deliberately. Renaming them would orphan existing users' data or duplicate calendar events. Do not rename them.
 
 **Data model.** IndexedDB database `suivi-lait-db` (version 2) with two object stores:
 - `feeds` (keyPath `id`, index `by_date` on `date`): one record per bottle, `{ id, date: "YYYY-MM-DD", ml: number, time: ISO string }`. Millilitres are the canonical unit; ounces are a display-only conversion (`ML_PER_OZ = 29.5735`).
@@ -42,7 +42,7 @@ Production URL: https://suivi-lait.vercel.app (the Vercel project keeps its old 
 
 The chosen unit is persisted in `localStorage` under `suivi-lait-unit-v1`.
 
-**Daily minimum.** `DAILY_MIN_ML = 600` drives the progress bar and status line in the total card (peach while under, sage once reached) and the vertical marker in the 7-day history. The history bars are scaled to `max(totals, DAILY_MIN_ML) * 1.1` so the marker never sits on the edge. Change the constant, not the strings, to adjust the target.
+**Daily minimum (depends on the baby's age).** The minimum for a day comes from `minimumFor(baby, dateStr)` (`lib/baby.ts`). Baby settings live in `localStorage` under `suivi-lait-baby-v1` (`{ birthDate: "YYYY-MM-DD" | null, tiersMl: number[] }`) and are edited in the ⚙ panel (`components/BabySettings.tsx`). The age bands are fixed (`TIER_STARTS`, in completed months: 0, 1, 2, 4, 6+); only their values are editable, with indicative defaults in `DEFAULT_TIERS_ML`. Each day uses the baby's age **on that day**, so past days keep the minimum of the age they had. Without a birth date every day uses `DAILY_MIN_ML = 600`, so existing users see no change. The minimum drives the progress bar and status line in the total card (peach while under, sage once reached), the "reached" stats, and the per-row marker in the history (`DayRow.minMl`). History bars are scaled to `max(totals, minima) * 1.1` so markers never sit on the edge. When the minimum varies within the period, labels switch to generic wording (`statDaysReachedVar`, `historyLabelVar`).
 
 **Migration.** On boot, `migrateFromLocalStorage()` imports any data from the pre-IndexedDB key `suivi-lait-data-v1` and then deletes that key. Keep this path working if the schema changes. If you change the IndexedDB schema, bump `DB_VERSION` and handle it in `onupgradeneeded`.
 

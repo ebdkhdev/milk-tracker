@@ -453,3 +453,66 @@ header {
 .history-row .hlabel { white-space: nowrap; }
 :root[lang="ar"] .history-row .hlabel { width: 76px; }
 footer { text-align: center; color: var(--ink-soft); font-size: 11px; margin-top: 34px; }
+.settings-btn {
+  border: none;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  border-radius: 999px;
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.settings-btn.active { background: var(--sage); color: #fff; }
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 18px;
+  font-size: 13px;
+}
+.settings-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.settings-title { font-weight: 600; font-size: 14px; }
+.settings-close, .settings-reset {
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--ink-soft);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.settings-birth { display: flex; align-items: center; gap: 8px; }
+.settings-age { color: var(--sage-deep); font-weight: 600; }
+.settings-card input {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  min-width: 0;
+}
+.settings-sub { color: var(--ink-soft); margin: 14px 0 8px; }
+.tiers { display: flex; flex-direction: column; gap: 6px; }
+.tier { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin: 0 -8px; border-radius: 8px; }
+.tier.current { background: var(--surface-2); }
+.tier-label { flex: 1; }
+.tier-badge { font-size: 11px; font-weight: 600; color: var(--sage-deep); }
+.tier-input { display: flex; align-items: center; gap: 6px; }
+.tier-input input { width: 72px; text-align: end; font-variant-numeric: tabular-nums; }
+.tier-input .unit-tag { color: var(--ink-soft); width: 34px; }
+.settings-note { color: var(--ink-soft); font-size: 11px; margin: 10px 0; }
+.brand { white-space: nowrap; }
+@media (max-width: 380px) {
+  .brand { font-size: 17px; }
+  .header-controls { gap: 6px; }
+  .lang-select { padding: 6px 6px; }
+  .unit-toggle button { padding: 6px 9px; }
+}
