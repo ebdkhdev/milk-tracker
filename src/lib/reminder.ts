@@ -32,42 +32,13 @@ export function showReminderNotification(t: T) {
   }
 }
 
-// Daily calendar event with an alarm: the fallback when the app is closed.
-// The UID keeps the legacy "@suivi-lait" domain so re-importing does not duplicate events.
 function hhmm(time: string) {
   const parts = time.split(':')
   const h = parseInt(parts[0], 10), m = parseInt(parts[1], 10)
   return [String(isNaN(h) ? 8 : h).padStart(2, '0'), String(isNaN(m) ? 0 : m).padStart(2, '0')]
 }
 
-export function buildIcsUrl(time: string, t: T) {
-  const [hh, mm] = hhmm(time)
-  const start = todayStr(new Date()).replace(/-/g, '') + 'T' + hh + mm + '00'
-  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-  const ics = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Milk Tracker//Rappel vitamine D//FR',
-    'BEGIN:VEVENT',
-    'UID:vitamine-d-' + hh + mm + '@suivi-lait',
-    'DTSTAMP:' + stamp,
-    'DTSTART:' + start,
-    'DURATION:PT5M',
-    'RRULE:FREQ=DAILY',
-    'SUMMARY:' + t('icsSummary'),
-    'DESCRIPTION:' + t('icsDesc'),
-    'BEGIN:VALARM',
-    'TRIGGER:PT0M',
-    'ACTION:DISPLAY',
-    'DESCRIPTION:' + t('vitD'),
-    'END:VALARM',
-    'END:VEVENT',
-    'END:VCALENDAR',
-  ].join('\r\n')
-  return 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics)
-}
-
-// Same daily event as a Google Calendar template link (opens in the browser, no file).
+// Daily event as a Google Calendar template link (opens in the browser, no file): the fallback when the app is closed.
 // Dates without "Z" are read in the ctz time zone; the alert is the calendar's default one.
 export function buildGoogleCalendarUrl(time: string, t: T) {
   const [hh, mm] = hhmm(time)
@@ -78,8 +49,8 @@ export function buildGoogleCalendarUrl(time: string, t: T) {
   const dates = day + 'T' + hh + mm + '00/' + day + 'T' + (endHm > hh + mm ? endHm : '2359') + '00'
   const params = new URLSearchParams({
     action: 'TEMPLATE',
-    text: t('icsSummary'),
-    details: t('icsDesc'),
+    text: t('eventSummary'),
+    details: t('eventDesc'),
     dates,
     recur: 'RRULE:FREQ=DAILY',
   })
