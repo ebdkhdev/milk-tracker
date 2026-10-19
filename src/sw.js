@@ -1,5 +1,7 @@
-const CACHE = "milk-tracker-v7";
-const ASSETS = ["/", "/index.html", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
+// Template: scripts/build-sw.mjs replaces the two placeholders below and writes dist/client/sw.js.
+// The cache name embeds a hash of the build output, so every deploy purges the previous cache on activate.
+const CACHE = "milk-tracker-__BUILD_HASH__";
+const ASSETS = __PRECACHE__;
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));

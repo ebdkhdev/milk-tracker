@@ -1,0 +1,260 @@
+// A value is a string with {placeholders}, or an object of Intl.PluralRules categories keyed on vars.n
+export type Lang = 'fr' | 'en' | 'ar'
+export type Unit = 'ml' | 'oz'
+type Plural = Partial<Record<Intl.LDMLPluralRule, string>> & { other: string }
+type Dict = Record<string, string | Plural>
+
+export const LANG_KEY = 'suivi-lait-lang-v1'
+export const LANGS: Lang[] = ['fr', 'en', 'ar']
+export const RTL_LANGS: Lang[] = ['ar']
+// "ar-u-nu-latn" keeps Western digits in dates, matching the numbers we concatenate ourselves
+export const LOCALES: Record<Lang, string> = { fr: 'fr-FR', en: 'en-GB', ar: 'ar-u-nu-latn' }
+
+export const STRINGS: Record<Lang, Dict> = {
+  fr: {
+    language: "Langue",
+    unitGroup: "Unité",
+    unit_ml: "ml",
+    unit_oz: "oz",
+    installPrompt: "Installer sur l'écran d'accueil ?",
+    install: "Installer",
+    prevDay: "Jour précédent",
+    nextDay: "Jour suivant",
+    pickDate: "Choisir une date",
+    today: "Aujourd'hui",
+    todayShort: "Auj.",
+    yesterday: "Hier",
+    noFeedsYet: "Aucun biberon pour l'instant",
+    bottles: { one: "{n} biberon", other: "{n} biberons" },
+    minTarget: "min. {v}",
+    goalReached: "✓ Minimum atteint",
+    goalReachedExtra: "✓ Minimum atteint (+{v})",
+    goalRemaining: "Encore {v} pour atteindre le minimum",
+    vitD: "Vitamine D",
+    vitdNotYetToday: "Pas encore donnée aujourd'hui",
+    vitdNotGiven: "Non donnée ce jour",
+    vitdGivenAt: "Donnée à {time}",
+    vitdGiven: "Donnée",
+    vitdBtnGive: "À donner",
+    vitdBtnDone: "✓ Donnée",
+    vitdDotGiven: "Vitamine D donnée",
+    vitdDotNot: "Vitamine D non donnée",
+    reminderDue: "⏰ Rappel : pas encore donnée ce matin",
+    reminderDaily: "Rappel chaque matin",
+    reminderTime: "Heure du rappel",
+    calendar: "Calendrier",
+    icsFile: "rappel-vitamine-d.ics",
+    icsSummary: "Vitamine D 💊",
+    icsDesc: "Donner la vitamine D au bébé puis la cocher dans Milk Tracker.",
+    notifBody: "Pense à donner la vitamine D ce matin.",
+    noteUnsupported: "Ce navigateur ne peut pas afficher de notifications ; le rappel s'affiche dans l'app. Utilise « Calendrier » pour une alerte sur le téléphone.",
+    noteDenied: "Notifications refusées dans le navigateur. Le rappel s'affiche dans l'app ; utilise « Calendrier » pour une alerte sur le téléphone.",
+    noteOk: "Le rappel s'affiche dans l'app et en notification quand elle est ouverte. Pour une alerte même app fermée, ajoute-le au calendrier.",
+    quickAdd: "Ajout rapide",
+    customPlaceholder: "Quantité personnalisée",
+    feedTime: "Heure du biberon",
+    add: "Ajouter",
+    todaysFeeds: "Biberons du jour",
+    emptyDay: "Aucun biberon enregistré pour cette journée.",
+    amount: "Quantité",
+    time: "Heure",
+    save: "Enregistrer",
+    cancel: "Annuler",
+    edit: "Modifier",
+    del: "Supprimer",
+    stats: "Statistiques",
+    period: "Période",
+    days7: "7 j",
+    days30: "30 j",
+    statsEmpty: "Aucun biberon enregistré sur les {n} derniers jours.",
+    statAvgDay: "moyenne / jour",
+    statDaysReached: "jours ≥ {v}",
+    statPerDay: "biberons / jour",
+    statAvgBottle: "moyenne / biberon",
+    statVitd: "jours vitamine D",
+    statBest: "record · {date}",
+    statsNote: {
+      one: "Moyennes calculées sur {n} jour renseigné sur {total}.",
+      other: "Moyennes calculées sur {n} jours renseignés sur {total}."
+    },
+    historyLabel: "Historique · touche un jour pour l'ouvrir · trait = minimum {v} · point vert = vitamine D",
+    openDay: "Ouvrir le {date}",
+    minMarker: "Minimum {v}",
+    footer: "Données stockées localement (IndexedDB) sur cet appareil."
+  },
+  en: {
+    language: "Language",
+    unitGroup: "Unit",
+    unit_ml: "ml",
+    unit_oz: "oz",
+    installPrompt: "Add to home screen?",
+    install: "Install",
+    prevDay: "Previous day",
+    nextDay: "Next day",
+    pickDate: "Pick a date",
+    today: "Today",
+    todayShort: "Today",
+    yesterday: "Yesterday",
+    noFeedsYet: "No bottles yet",
+    bottles: { one: "{n} bottle", other: "{n} bottles" },
+    minTarget: "min. {v}",
+    goalReached: "✓ Minimum reached",
+    goalReachedExtra: "✓ Minimum reached (+{v})",
+    goalRemaining: "{v} more to reach the minimum",
+    vitD: "Vitamin D",
+    vitdNotYetToday: "Not given yet today",
+    vitdNotGiven: "Not given that day",
+    vitdGivenAt: "Given at {time}",
+    vitdGiven: "Given",
+    vitdBtnGive: "Mark given",
+    vitdBtnDone: "✓ Given",
+    vitdDotGiven: "Vitamin D given",
+    vitdDotNot: "Vitamin D not given",
+    reminderDue: "⏰ Reminder: not given yet this morning",
+    reminderDaily: "Remind me every morning",
+    reminderTime: "Reminder time",
+    calendar: "Calendar",
+    icsFile: "vitamin-d-reminder.ics",
+    icsSummary: "Vitamin D 💊",
+    icsDesc: "Give the baby vitamin D, then tick it in Milk Tracker.",
+    notifBody: "Remember to give vitamin D this morning.",
+    noteUnsupported: "This browser can't show notifications; the reminder appears in the app. Use \"Calendar\" for an alert on your phone.",
+    noteDenied: "Notifications are blocked in the browser. The reminder appears in the app; use \"Calendar\" for an alert on your phone.",
+    noteOk: "The reminder appears in the app, and as a notification while it is open. For an alert even when the app is closed, add it to your calendar.",
+    quickAdd: "Quick add",
+    customPlaceholder: "Custom amount",
+    feedTime: "Bottle time",
+    add: "Add",
+    todaysFeeds: "Bottles of the day",
+    emptyDay: "No bottles logged for this day.",
+    amount: "Amount",
+    time: "Time",
+    save: "Save",
+    cancel: "Cancel",
+    edit: "Edit",
+    del: "Delete",
+    stats: "Statistics",
+    period: "Period",
+    days7: "7 d",
+    days30: "30 d",
+    statsEmpty: "No bottles logged in the last {n} days.",
+    statAvgDay: "average / day",
+    statDaysReached: "days ≥ {v}",
+    statPerDay: "bottles / day",
+    statAvgBottle: "average / bottle",
+    statVitd: "vitamin D days",
+    statBest: "best · {date}",
+    statsNote: {
+      one: "Averages over {n} logged day out of {total}.",
+      other: "Averages over {n} logged days out of {total}."
+    },
+    historyLabel: "History · tap a day to open it · line = {v} minimum · green dot = vitamin D",
+    openDay: "Open {date}",
+    minMarker: "Minimum {v}",
+    footer: "Data stored locally (IndexedDB) on this device."
+  },
+  ar: {
+    language: "اللغة",
+    unitGroup: "الوحدة",
+    unit_ml: "مل",
+    unit_oz: "أونصة",
+    installPrompt: "التثبيت على الشاشة الرئيسية؟",
+    install: "تثبيت",
+    prevDay: "اليوم السابق",
+    nextDay: "اليوم التالي",
+    pickDate: "اختيار تاريخ",
+    today: "اليوم",
+    todayShort: "اليوم",
+    yesterday: "أمس",
+    noFeedsYet: "لا توجد رضعات بعد",
+    bottles: { one: "رضعة واحدة", two: "رضعتان", few: "{n} رضعات", many: "{n} رضعة", other: "{n} رضعة" },
+    minTarget: "الحد الأدنى {v}",
+    goalReached: "✓ تم بلوغ الحد الأدنى",
+    goalReachedExtra: "✓ تم بلوغ الحد الأدنى (+{v})",
+    goalRemaining: "يتبقى {v} لبلوغ الحد الأدنى",
+    vitD: "فيتامين د",
+    vitdNotYetToday: "لم يُعطَ بعد اليوم",
+    vitdNotGiven: "لم يُعطَ في هذا اليوم",
+    vitdGivenAt: "أُعطي الساعة {time}",
+    vitdGiven: "أُعطي",
+    vitdBtnGive: "تأكيد الإعطاء",
+    vitdBtnDone: "✓ أُعطي",
+    vitdDotGiven: "أُعطي فيتامين د",
+    vitdDotNot: "لم يُعطَ فيتامين د",
+    reminderDue: "⏰ تذكير: لم يُعطَ بعد هذا الصباح",
+    reminderDaily: "تذكير كل صباح",
+    reminderTime: "وقت التذكير",
+    calendar: "التقويم",
+    icsFile: "vitamin-d-reminder.ics",
+    icsSummary: "فيتامين د 💊",
+    icsDesc: "أعطِ فيتامين د للرضيع ثم سجّله في Milk Tracker.",
+    notifBody: "لا تنسَ إعطاء فيتامين د هذا الصباح.",
+    noteUnsupported: "هذا المتصفح لا يعرض الإشعارات؛ يظهر التذكير داخل التطبيق. استخدم «التقويم» لتنبيه على الهاتف.",
+    noteDenied: "الإشعارات مرفوضة في المتصفح. يظهر التذكير داخل التطبيق؛ استخدم «التقويم» لتنبيه على الهاتف.",
+    noteOk: "يظهر التذكير داخل التطبيق وكإشعار عندما يكون مفتوحًا. لتنبيه حتى والتطبيق مغلق، أضِفه إلى التقويم.",
+    quickAdd: "إضافة سريعة",
+    customPlaceholder: "كمية مخصّصة",
+    feedTime: "وقت الرضعة",
+    add: "إضافة",
+    todaysFeeds: "رضعات اليوم",
+    emptyDay: "لا توجد رضعات مسجّلة لهذا اليوم.",
+    amount: "الكمية",
+    time: "الوقت",
+    save: "حفظ",
+    cancel: "إلغاء",
+    edit: "تعديل",
+    del: "حذف",
+    stats: "الإحصائيات",
+    period: "الفترة",
+    days7: "7 أيام",
+    days30: "30 يومًا",
+    statsEmpty: { few: "لا توجد رضعات مسجّلة خلال آخر {n} أيام.", other: "لا توجد رضعات مسجّلة خلال آخر {n} يومًا." },
+    statAvgDay: "المعدل / يوم",
+    statDaysReached: "أيام ≥ {v}",
+    statPerDay: "رضعات / يوم",
+    statAvgBottle: "المعدل / رضعة",
+    statVitd: "أيام فيتامين د",
+    statBest: "الأعلى · {date}",
+    statsNote: {
+      one: "المعدلات محسوبة على يوم مسجّل واحد من {total}.",
+      two: "المعدلات محسوبة على يومين مسجّلين من {total}.",
+      few: "المعدلات محسوبة على {n} أيام مسجّلة من {total}.",
+      other: "المعدلات محسوبة على {n} يومًا مسجّلًا من {total}."
+    },
+    historyLabel: "السجل · المس يومًا لفتحه · الخط = الحد الأدنى {v} · النقطة الخضراء = فيتامين د",
+    openDay: "فتح يوم {date}",
+    minMarker: "الحد الأدنى {v}",
+    footer: "البيانات محفوظة محليًا (IndexedDB) على هذا الجهاز."
+  }
+};
+
+// Saved choice first; existing users (who already have settings) keep French; new users get their browser language.
+export function loadLang(): Lang {
+  try {
+    const saved = localStorage.getItem(LANG_KEY) as Lang | null
+    if (saved && LANGS.includes(saved)) return saved
+    if (localStorage.getItem('suivi-lait-unit-v1') || localStorage.getItem('suivi-lait-reminder-v1')) return 'fr'
+  } catch (e) {}
+  const nav = navigator.languages || [navigator.language || '']
+  for (const n of nav) {
+    const code = String(n).slice(0, 2).toLowerCase() as Lang
+    if (LANGS.includes(code)) return code
+  }
+  return 'fr'
+}
+export function saveLang(l: Lang) {
+  try { localStorage.setItem(LANG_KEY, l) } catch (e) {}
+}
+
+export type Vars = Record<string, string | number>
+export type T = (key: string, vars?: Vars) => string
+
+export function makeT(lang: Lang): T {
+  const plurals = new Intl.PluralRules(LOCALES[lang])
+  return (key, vars = {}) => {
+    let s = STRINGS[lang][key] ?? STRINGS.fr[key]
+    if (s == null) return key
+    if (typeof s === 'object') s = s[plurals.select(Number(vars.n))] ?? s.other
+    return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? String(vars[k]) : m))
+  }
+}
