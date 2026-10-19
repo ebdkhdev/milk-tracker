@@ -60,6 +60,16 @@ export async function run(DIST) {
     await b.waitFor(`(document.querySelector("#toast .toast-text")||{}).textContent==="2 biberons importés"`)
     equal('existing baby settings are kept', [await b.ev(`document.getElementById("birth-date").value`), await b.ev(`[...document.querySelectorAll("#tiers input")].map(i=>i.value).join(",")`)], ['2026-01-15', '500,600,700,750,700'])
 
+    // type and note survive a round trip through a file
+    const typed = join(dir, 'typed.json')
+    writeFileSync(typed, JSON.stringify({ app: 'milk-tracker', version: 1, daily: [], feeds: [
+      { id: 'typed-1', date: data.feeds[0].date, ml: 50, time: data.feeds[0].time, type: 'breast', note: ' tétée courte ' },
+      { id: 'typed-2', date: data.feeds[0].date, ml: 55, time: data.feeds[0].time, type: 'soda', note: 42 },
+    ] }))
+    await b.setFiles('#import-file', [typed]); await sleep(500)
+    const stored = await b.ev(`new Promise(function(res){var r=indexedDB.open("suivi-lait-db");r.onsuccess=function(){var q=r.result.transaction("feeds").objectStore("feeds").getAll();q.onsuccess=function(){res(q.result.filter(function(f){return f.id.indexOf("typed")===0}).map(function(f){return [f.id,f.type||null,f.note||null]}))}}})`)
+    equal('type and note imported and validated', stored.sort(), [['typed-1', 'breast', 'tétée courte'], ['typed-2', null, null]])
+
     const bad = join(dir, 'bad.json')
     writeFileSync(bad, '{"hello": 1}')
     await setFile(bad)

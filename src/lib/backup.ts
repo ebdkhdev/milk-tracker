@@ -3,7 +3,7 @@ import { DEFAULT_TIERS_ML } from './baby'
 import type { Baby } from './baby'
 import type { Daily, Feed } from './db'
 import { newId } from './db'
-import { sanitizeQuick } from './settings'
+import { NOTE_MAX, sanitizeQuick } from './settings'
 
 const APP = 'milk-tracker'
 const VERSION = 1
@@ -33,7 +33,10 @@ export function parseBackup(text: string): Parsed | null {
   for (const f of data.feeds as Array<Record<string, unknown>>) {
     const ml = Number(f && f.ml)
     if (f && typeof f.date === 'string' && DAY_RE.test(f.date) && ml > 0 && ml < 10000 && validTime(f.time)) {
-      feeds.push({ id: typeof f.id === 'string' && f.id ? f.id : newId(), date: f.date, ml, time: f.time as string })
+      const feed: Feed = { id: typeof f.id === 'string' && f.id ? f.id : newId(), date: f.date, ml, time: f.time as string }
+      if (f.type === 'formula' || f.type === 'breast') feed.type = f.type
+      if (typeof f.note === 'string' && f.note.trim()) feed.note = f.note.trim().slice(0, NOTE_MAX)
+      feeds.push(feed)
     } else skipped++
   }
   const daily: Daily[] = []

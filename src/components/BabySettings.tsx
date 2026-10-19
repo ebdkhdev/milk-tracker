@@ -3,6 +3,7 @@ import type { Baby } from '#/lib/baby'
 import { todayStr } from '#/lib/dates'
 import { useFormat } from '#/lib/format'
 import { DAILY_MIN_ML, MAX_FEED_ML, QUICK_AMOUNTS_ML } from '#/lib/settings'
+import type { MilkPrefs } from '#/lib/settings'
 
 type Props = {
   baby: Baby
@@ -10,12 +11,14 @@ type Props = {
   quick: number[]
   quickSuggestion: number[] | null
   onQuick: (q: number[]) => void
+  milk: MilkPrefs
+  onMilk: (m: MilkPrefs) => void
   onClose: () => void
   onExport: () => void
   onImport: (file: File) => void
 }
 
-export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, onClose, onExport, onImport }: Props) {
+export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, milk, onMilk, onClose, onExport, onImport }: Props) {
   const { t, unitLabel, mlToDisplay, displayToMl, formatAmount } = useFormat()
   const today = todayStr(new Date())
   const current = tierIndexFor(baby, today)
@@ -129,6 +132,20 @@ export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, 
           </button>
         ) : null}
       </div>
+
+      <p className="settings-sub">{t('milkTitle')}</p>
+      <label className="settings-row settings-switch">
+        <span>{t('trackMilk')}</span>
+        <input
+          type="checkbox"
+          className="switch"
+          role="switch"
+          id="track-milk"
+          checked={milk.track}
+          onChange={(e) => onMilk({ ...milk, track: e.target.checked })}
+        />
+      </label>
+      {milk.track ? <p className="settings-note">{t('milkNote')}</p> : null}
 
       <p className="settings-sub">{t('dataTitle')}</p>
       <div className="data-row">

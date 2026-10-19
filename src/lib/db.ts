@@ -5,7 +5,9 @@ const STORE = 'feeds'
 const DAILY_STORE = 'daily'
 const LEGACY_KEY = 'suivi-lait-data-v1'
 
-export type Feed = { id: string; date: string; ml: number; time: string }
+export type MilkType = 'formula' | 'breast'
+// type and note are optional: older records (and users who don't track the type) have neither
+export type Feed = { id: string; date: string; ml: number; time: string; type?: MilkType; note?: string }
 export type Daily = { date: string; vitaminD: boolean; vitaminDTime: string | null }
 
 let dbPromise: Promise<IDBDatabase> | null = null

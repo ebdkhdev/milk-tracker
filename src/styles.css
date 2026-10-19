@@ -206,7 +206,7 @@ header::before {
 .settings-btn::after { content: ""; position: absolute; inset: -4px; }
 
 /* Segmented controls (unit, period): equal segments, sliding-pill look */
-.unit-toggle, .period-toggle {
+.unit-toggle, .period-toggle, .milk-toggle {
   display: inline-grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
@@ -215,7 +215,7 @@ header::before {
   padding: 2px;
   gap: 2px;
 }
-.unit-toggle button, .period-toggle button {
+.unit-toggle button, .period-toggle button, .milk-toggle button {
   border: none;
   background: transparent;
   color: var(--label);
@@ -227,17 +227,19 @@ header::before {
   font-weight: 500;
   white-space: nowrap;
 }
-.unit-toggle button.active, .period-toggle button.active {
+.unit-toggle button.active, .period-toggle button.active, .milk-toggle button.active {
   background: var(--surface);
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .unit-toggle button.active,
-  :root:not([data-theme="light"]) .period-toggle button.active { background: #636366; }
+  :root:not([data-theme="light"]) .period-toggle button.active,
+  :root:not([data-theme="light"]) .milk-toggle button.active { background: #636366; }
 }
 :root[data-theme="dark"] .unit-toggle button.active,
-:root[data-theme="dark"] .period-toggle button.active { background: #636366; }
+:root[data-theme="dark"] .period-toggle button.active,
+:root[data-theme="dark"] .milk-toggle button.active { background: #636366; }
 
 /* Liquid Glass capsules: the three header controls only (after the base control rules so they win).
    The ⚙ button keeps its tinted fill when the panel is open: the one coloured control in the bar. */
@@ -571,6 +573,11 @@ input[type="time"], input[type="date"], input[type="number"] {
 .feed-item .left { flex: 1 0 auto; gap: 10px; }
 .feed-item .amt { white-space: nowrap; font-weight: 600; font-family: var(--font-rounded); font-variant-numeric: tabular-nums; }
 .feed-item .time { white-space: nowrap; color: var(--label-2); font-size: 0.941rem; font-variant-numeric: tabular-nums; }
+.milk-badge { font-size: 0.706rem; font-weight: 600; color: var(--label-2); background: var(--fill); border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
+.feed-note { flex-basis: 100%; padding-inline-end: var(--gutter); padding-bottom: 12px; margin-top: -6px; font-size: 0.882rem; color: var(--label-2); overflow-wrap: anywhere; }
+.feed-edit .feed-note-input { flex: 1 1 100%; min-width: 0; }
+.feed-edit .milk-toggle { flex-shrink: 0; }
+.settings-switch { cursor: pointer; }
 .feed-item .actions { flex-shrink: 0; padding-inline-end: 4px; margin-inline-start: auto; }
 .feed-item .edit, .feed-item .del {
   border: none;

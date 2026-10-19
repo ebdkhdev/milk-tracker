@@ -1,10 +1,11 @@
-import type { Feed } from './db'
+import type { Feed, MilkType } from './db'
 import { todayStr } from './dates'
 import type { Unit } from './i18n'
 
 const UNIT_KEY = 'suivi-lait-unit-v1'
 const REMINDER_KEY = 'suivi-lait-reminder-v1'
 const QUICK_KEY = 'suivi-lait-quick-v1'
+const MILK_KEY = 'suivi-lait-milk-v1'
 
 export const ML_PER_OZ = 29.5735
 export const DAILY_MIN_ML = 600 // minimum quantité de lait par jour
@@ -64,4 +65,18 @@ export function suggestQuick(feeds: Feed[], now: Date): number[] | null {
   }
   if (counts.size < 4) return null
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 4).map((e) => e[0]).sort((a, b) => a - b)
+}
+
+// Milk type tracking is opt-in; `last` is the type preselected for the next bottle.
+export type MilkPrefs = { track: boolean; last: MilkType }
+export const NOTE_MAX = 120
+export function loadMilk(): MilkPrefs {
+  try {
+    const m = JSON.parse(localStorage.getItem(MILK_KEY) || 'null')
+    if (m && typeof m === 'object') return { track: !!m.track, last: m.last === 'breast' ? 'breast' : 'formula' }
+  } catch (e) {}
+  return { track: false, last: 'formula' }
+}
+export function saveMilk(m: MilkPrefs) {
+  try { localStorage.setItem(MILK_KEY, JSON.stringify(m)) } catch (e) {}
 }

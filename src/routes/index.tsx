@@ -20,12 +20,13 @@ import {
   dbAdd, dbDelete, dbGetAll, dbGetAllDaily, dbGetByDate, dbGetDaily, dbImport, dbPut, dbPutDaily,
   migrateFromLocalStorage, newId,
 } from '#/lib/db'
-import type { Daily, Feed } from '#/lib/db'
+import type { Daily, Feed, MilkType } from '#/lib/db'
 import { FormatProvider, useFormat } from '#/lib/format'
 import { RTL_LANGS, loadLang, makeT, saveLang } from '#/lib/i18n'
 import type { Lang, T, Unit } from '#/lib/i18n'
 import { notificationsAvailable, reminderIsDue, showReminderNotification } from '#/lib/reminder'
-import { isDefaultQuick, loadQuick, loadReminder, loadUnit, saveQuick, saveReminder, saveUnit, suggestQuick } from '#/lib/settings'
+import { isDefaultQuick, loadMilk, loadQuick, loadReminder, loadUnit, saveMilk, saveQuick, saveReminder, saveUnit, suggestQuick } from '#/lib/settings'
+import type { MilkPrefs } from '#/lib/settings'
 import type { Reminder } from '#/lib/settings'
 
 // Everything depends on browser storage and the local clock: render on the client only.
@@ -47,6 +48,7 @@ function App() {
   const [reminder, setReminderState] = useState<Reminder>(loadReminder)
   const [baby, setBabyState] = useState<Baby>(loadBaby)
   const [quick, setQuickState] = useState<number[]>(loadQuick)
+  const [milk, setMilkState] = useState<MilkPrefs>(loadMilk)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [viewDate, setViewDate] = useState(() => new Date())
   const [customTime, setCustomTime] = useState('')
@@ -146,6 +148,8 @@ function App() {
         count: list.length,
         daily: dailyByDate[ds] || null,
         minMl: minimumFor(baby, ds),
+        breastMl: list.reduce((s, e) => s + (e.type === 'breast' ? e.ml : 0), 0),
+        typedMl: list.reduce((s, e) => s + (e.type ? e.ml : 0), 0),
       })
     }
     return out
@@ -163,15 +167,22 @@ function App() {
   const addEntry = (ml: number) => {
     if (!ml || ml <= 0) return
     const time = viewingToday ? new Date().toISOString() : timeOnDate(dateStr, customTime || '12:00')
-    dbAdd({ id: newId(), date: dateStr, ml: Math.round(ml * 10) / 10, time })
+    const feed: Feed = { id: newId(), date: dateStr, ml: Math.round(ml * 10) / 10, time }
+    if (milk.track) feed.type = milk.last
+    dbAdd(feed)
       .then(bump)
       .catch((e) => console.error("Erreur d'enregistrement", e))
   }
 
-  const updateEntry = (entry: Feed, ml: number, hhmm: string) => {
-    if (!ml || ml <= 0) return
+  const updateEntry = (entry: Feed, c: { ml: number; hhmm: string; type?: MilkType; note: string }) => {
+    if (!c.ml || c.ml <= 0) return
     setEditingId(null)
-    dbPut({ ...entry, ml: Math.round(ml * 10) / 10, time: hhmm ? timeOnDate(entry.date, hhmm) : entry.time })
+    const next: Feed = { ...entry, ml: Math.round(c.ml * 10) / 10, time: c.hhmm ? timeOnDate(entry.date, c.hhmm) : entry.time }
+    if (c.type) next.type = c.type
+    const note = c.note.trim()
+    if (note) next.note = note
+    else delete next.note
+    dbPut(next)
       .then(bump)
       .catch((e) => console.error('Erreur de modification', e))
   }
@@ -222,6 +233,8 @@ function App() {
       .catch((e) => console.error('Erreur vitamine D', e))
   }
 
+  const setMilk = (m: MilkPrefs) => { saveMilk(m); setMilkState(m) }
+
   const setReminder = (enabled: boolean, time: string | null) => {
     const next = { ...reminder, enabled, time: time || reminder.time }
     saveReminder(next)
@@ -247,6 +260,8 @@ function App() {
             quick={quick}
             quickSuggestion={suggestQuick(allFeeds, now)}
             onQuick={(q) => { saveQuick(q); setQuickState(q) }}
+            milk={milk}
+            onMilk={setMilk}
             onClose={() => setSettingsOpen(false)}
             onExport={exportData}
             onImport={importData}
@@ -270,8 +285,8 @@ function App() {
           onToggle={toggleVitaminD}
           onReminder={setReminder}
         />
-        <AddFeed past={!viewingToday} quick={quick} customTime={customTime} onCustomTime={setCustomTime} onAdd={addEntry} />
-        <FeedList entries={entries} editingId={editingId} onEdit={setEditingId} onSave={updateEntry} onDelete={removeEntry} />
+        <AddFeed past={!viewingToday} quick={quick} milk={milk} onMilkType={(type) => setMilk({ ...milk, last: type })} customTime={customTime} onCustomTime={setCustomTime} onAdd={addEntry} />
+        <FeedList entries={entries} editingId={editingId} trackMilk={milk.track} onEdit={setEditingId} onSave={updateEntry} onDelete={removeEntry} />
         <Stats
           rows={rows}
           period={period}

@@ -52,6 +52,36 @@ export async function run(DIST) {
     writeFileSync(file, JSON.stringify({ app: 'milk-tracker', version: 1, feeds: [], daily: [], quick: [10, 20, 30, 40] }))
     await b.setFiles('#import-file', [file]); await sleep(400)
     equal('customised amounts are kept', await buttons(), '80 ml,110 ml,140 ml,170 ml')
+
+    // milk type: opt-in, remembered, shown on rows, editable with a note, counted in stats
+    check('no milk toggle by default', !(await b.exists('#milk-breast')))
+    if (!(await b.exists('#settings'))) await b.click('#settings-btn')
+    await b.click('#track-milk'); await sleep(100)
+    await b.click('#settings-close')
+    await b.click('#milk-breast'); await sleep(100)
+    await b.click('#quick-grid button', 2) // 140 ml breast milk
+    await sleep(200)
+    await b.click('#milk-formula'); await sleep(100)
+    await b.click('#quick-grid button', 0) // 80 ml formula
+    await sleep(200)
+    equal('badges on rows (newest first)', await b.ev(`[...document.querySelectorAll(".feed-item")].slice(0,2).map(e=>e.querySelector(".amt").textContent+" "+e.querySelector(".milk-badge").textContent).join(" | ")`), '80 ml Infantile | 140 ml Maternel')
+    await b.reload()
+    equal('last type remembered', await b.ev(`document.getElementById("milk-formula").getAttribute("aria-pressed")`), 'true')
+    // rows are found by amount: saving an edit rounds the time to the minute, which can reorder them
+    const rowIdx = (amt) => b.ev(`[...document.querySelectorAll(".feed-item")].findIndex(e=>(e.querySelector(".amt")||{}).textContent==="${amt}")`)
+    await b.click('.feed-item .edit', await rowIdx('140 ml'))
+    await b.click('#edit-milk-formula')
+    await b.setValue('.feed-note-input', '  a peu bu  ')
+    await b.click('.feed-edit .save')
+    await b.waitFor(`!!document.querySelector(".feed-note")`)
+    equal('edited type and trimmed note', await b.ev(`(function(){var e=document.querySelectorAll(".feed-item")[${await rowIdx('140 ml')}];return e.querySelector(".milk-badge").textContent+" / "+e.querySelector(".feed-note").textContent})()`), 'Infantile / a peu bu')
+    await b.click('.feed-item .edit', await rowIdx('140 ml'))
+    await b.click('#edit-milk-breast')
+    await b.click('.feed-edit .save'); await sleep(200)
+    const tile = await b.ev(`[...document.querySelectorAll(".stat")].map(e=>e.textContent).find(s=>s.indexOf("lait maternel")>=0)`)
+    // today: 140 breast + 80 formula typed; the earlier untyped bottles are left out
+    equal('breast milk share by volume', tile, '64%lait maternel (en volume)')
+    equal('note kept when only the type changes', await b.text('.feed-note'), 'a peu bu')
     equal('no JS errors', b.errors, [])
   } finally {
     await b.close()

@@ -4,7 +4,8 @@ import type { Daily } from '#/lib/db'
 import { useFormat } from '#/lib/format'
 
 // Per-day aggregates for the selected period, most recent day first. minMl is that day's minimum (it depends on the baby's age).
-export type DayRow = { date: string; totalMl: number; count: number; daily: Daily | null; minMl: number }
+// breastMl / typedMl: volumes of the bottles whose milk type was recorded (untyped bottles are left out of the share).
+export type DayRow = { date: string; totalMl: number; count: number; daily: Daily | null; minMl: number; breastMl: number; typedMl: number }
 
 // The single minimum shared by every row, or null when it changes within the period.
 function sharedMin(rows: DayRow[]) {
@@ -85,6 +86,8 @@ function StatTiles({ rows }: { rows: DayRow[] }) {
   const shared = sharedMin(rows)
   const avgBottle = sumCount ? sumMl / sumCount : 0
   const avgCount = sumCount / n
+  const typedMl = rows.reduce((s, r) => s + r.typedMl, 0)
+  const breastMl = rows.reduce((s, r) => s + r.breastMl, 0)
   const bestLabel = bestDay ? parseDay(bestDay).toLocaleDateString(locale, { day: 'numeric', month: 'short' }) : ''
 
   return (
@@ -104,6 +107,7 @@ function StatTiles({ rows }: { rows: DayRow[] }) {
           cls={vitd === days ? 'good' : vitd < days / 2 ? 'bad' : ''}
         />
         <Tile value={mlToDisplay(best)} unit={u} label={t('statBest', { date: bestLabel })} />
+        {typedMl > 0 ? <Tile value={Math.round((breastMl / typedMl) * 100)} unit="%" label={t('statBreast')} /> : null}
       </div>
       <p className="stats-note" id="stats-note">{t('statsNote', { n, total: days })}</p>
     </>

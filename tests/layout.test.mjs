@@ -4,7 +4,7 @@ import { check, equal, suite } from './lib/assert.mjs'
 
 // Controls that are visually smaller than 44 pt on purpose (iOS segmented controls and switch);
 // they still must reach Apple's 28 pt minimum.
-const SMALL_OK = ['#unit-ml', '#unit-oz', '#period-7', '#period-30', '#reminder-enabled']
+const SMALL_OK = ['#unit-ml', '#unit-oz', '#period-7', '#period-30', '#reminder-enabled', '#track-milk']
 
 export async function run(DIST) {
   suite('Layout: touch targets, text size, narrow screens')
@@ -15,7 +15,10 @@ export async function run(DIST) {
     await b.ev(`localStorage.setItem("suivi-lait-lang-v1","fr")`)
     await b.reload()
     for (const i of [3, 2]) { await b.click('#quick-grid button', i); await sleep(150) }
-    await b.click('.feed-item .del', 0) // shows the toast with its undo button
+    await b.click('.feed-item .edit', 0)
+    await b.setValue('.feed-note-input', 'Une note assez longue pour vérifier le retour à la ligne : régurgitation après le biberon, à surveiller demain matin')
+    await b.click('.feed-edit .save'); await sleep(200)
+    await b.click('.feed-item .del', 1) // shows the toast with its undo button
     await b.click('#settings-btn')
     await sleep(200)
 
