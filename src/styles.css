@@ -16,7 +16,13 @@
   --warn: #b33a00;          /* not reached yet / reminder due */
   --warn-soft: rgba(179, 58, 0, 0.12);
   --danger: #c4000f;
-  --bar-glass: rgba(242, 242, 247, 0.72);
+  /* Liquid Glass (functional layer only): scroll-edge band under the bar, and the floating control capsules */
+  --edge: rgba(242, 242, 247, 0.78);
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-rim: rgba(255, 255, 255, 0.9);
+  --glass-line: rgba(0, 0, 0, 0.08);
+  --glass-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  --wash: rgba(75, 73, 200, 0.08);   /* brand colour in the content layer, for the glass to pick up */
   --radius: 12px;
   --radius-lg: 20px;
   --gutter: 16px;
@@ -41,7 +47,12 @@
     --warn: #ff9f0a;
     --warn-soft: rgba(255, 159, 10, 0.16);
     --danger: #ff6961;
-    --bar-glass: rgba(0, 0, 0, 0.66);
+    --edge: rgba(0, 0, 0, 0.66);
+    --glass: rgba(44, 44, 46, 0.6);
+    --glass-rim: rgba(255, 255, 255, 0.22);
+    --glass-line: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    --wash: rgba(142, 140, 255, 0.18);
   }
 }
 :root[data-theme="dark"] {
@@ -60,7 +71,12 @@
   --warn: #ff9f0a;
   --warn-soft: rgba(255, 159, 10, 0.16);
   --danger: #ff6961;
-  --bar-glass: rgba(0, 0, 0, 0.66);
+  --edge: rgba(0, 0, 0, 0.66);
+  --glass: rgba(44, 44, 46, 0.6);
+  --glass-rim: rgba(255, 255, 255, 0.22);
+  --glass-line: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  --wash: rgba(142, 140, 255, 0.18);
 }
 /* Increase Contrast: stronger secondary text and opaque separators */
 @media (prefers-contrast: more) {
@@ -79,7 +95,8 @@ html { font-size: 106.25%; }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
 body {
-  background: var(--bg);
+  /* the wash scrolls with the page (content layer) and stays behind the title only */
+  background: radial-gradient(130% 440px at 50% -120px, var(--wash), transparent) no-repeat, var(--bg);
   color: var(--label);
   font-family: var(--font);
   font-size: 1rem;
@@ -97,7 +114,8 @@ button { cursor: pointer; }
   padding: 0 var(--gutter) calc(40px + env(safe-area-inset-bottom, 0px));
 }
 
-/* ---------- Top bar: the only translucent ("glass") surface, floating over scrolling content ---------- */
+/* ---------- Top bar (iOS 26 style): no solid bar, a scroll-edge band blurs and fades the content
+   beneath, and the controls float on it as Liquid Glass capsules ---------- */
 header {
   position: sticky;
   top: 0;
@@ -108,13 +126,20 @@ header {
   gap: 8px;
   margin: 0 calc(-1 * var(--gutter));
   padding: calc(6px + env(safe-area-inset-top, 0px)) var(--gutter) 6px;
-  background: var(--bar-glass);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  backdrop-filter: blur(24px) saturate(1.4);
-  border-block-end: 0.5px solid var(--separator);
 }
-@media (prefers-reduced-transparency: reduce) {
-  header { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* The band lives on a pseudo-element: blur/mask on <header> itself would make it the backdrop root
+   of the capsules (they would blur the bar instead of the page) and would fade the controls too. */
+header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -18px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--edge) 60%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent);
+  mask-image: linear-gradient(to bottom, #000 62%, transparent);
 }
 .brand {
   font-size: 1rem;
@@ -129,7 +154,6 @@ header {
   appearance: none;
   -webkit-appearance: none;
   border: none;
-  background: var(--fill);
   border-radius: 999px;
   min-height: 44px;
   padding: 0 14px;
@@ -139,7 +163,6 @@ header {
 }
 .settings-btn {
   border: none;
-  background: var(--fill);
   color: var(--label);
   border-radius: 999px;
   width: 36px;
@@ -186,6 +209,24 @@ header {
 }
 :root[data-theme="dark"] .unit-toggle button.active,
 :root[data-theme="dark"] .period-toggle button.active { background: #636366; }
+
+/* Liquid Glass capsules: the three header controls only (after the base control rules so they win).
+   The ⚙ button keeps its tinted fill when the panel is open: the one coloured control in the bar. */
+.lang-select, header .unit-toggle, .settings-btn:not(.active) {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  backdrop-filter: blur(16px) saturate(1.6);
+  box-shadow: inset 0 0.5px 0 var(--glass-rim), inset 0 0 0 0.5px var(--glass-line), var(--glass-shadow);
+}
+@media (prefers-reduced-transparency: reduce) {
+  header::before { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; -webkit-mask-image: none; mask-image: none; inset: 0; box-shadow: 0 0.5px 0 var(--separator); }
+  .lang-select, header .unit-toggle, .settings-btn:not(.active) { background: var(--fill); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+}
+@media (prefers-contrast: more) {
+  header::before { background: var(--bg); -webkit-mask-image: none; mask-image: none; inset: 0; box-shadow: 0 1px 0 var(--separator); }
+  .lang-select, header .unit-toggle, .settings-btn:not(.active) { background: var(--surface); box-shadow: inset 0 0 0 1px var(--separator); }
+}
+header .unit-toggle, header .unit-toggle button { border-radius: 999px; }
 
 /* ---------- Large title with day navigation ---------- */
 .day-nav {
@@ -396,13 +437,25 @@ input.switch::before {
   inset-inline-start: 2px;
   width: 27px;
   height: 27px;
-  border-radius: 50%;
+  border-radius: 999px;
   background: #fff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transition: inset-inline-start 0.2s ease;
+  transition: inset-inline-start 0.2s ease, width 0.2s ease, background 0.2s ease;
 }
 input.switch:checked { background: var(--good); }
 input.switch:checked::before { inset-inline-start: 22px; }
+/* While pressed, the thumb stretches and turns to glass (the one glass case HIG allows in the content layer) */
+input.switch:active::before {
+  width: 35px;
+  background: rgba(255, 255, 255, 0.4);
+  -webkit-backdrop-filter: blur(2px) saturate(1.8);
+  backdrop-filter: blur(2px) saturate(1.8);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.95), inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 3px 8px rgba(0, 0, 0, 0.22);
+}
+input.switch:checked:active::before { inset-inline-start: 14px; }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  input.switch:active::before { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
 @media (prefers-contrast: more) { input.switch { outline: 1px solid var(--separator); } }
 
 input[type="time"], input[type="date"], input[type="number"] {
