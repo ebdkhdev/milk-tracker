@@ -110,7 +110,8 @@ export async function run(DIST) {
     for (let i = 0; i < 40 && pushStore.subs.size; i++) await sleep(100)
     check('turned off: server forgets the phone', pushStore.subs.size === 0, JSON.stringify([...pushStore.subs.values()].map((s) => [s.endpoint, s.familyId, s.name])))
     check('and the browser subscription is removed', await b.ev('!!window.__unsubscribed'))
-    check('and offers to turn them on again', await b.exists('#notif-enable'))
+    await b.waitFor(`!!document.getElementById('notif-enable')`)
+    check('and offers to turn them on again', true)
     await close()
 
     // iPhone in Safari (not installed): explain how to get notifications instead of offering them

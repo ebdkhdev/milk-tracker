@@ -2,6 +2,7 @@
 import { handlePush } from './_push.mjs'
 import { pgStore, pushStore } from './_pg.mjs'
 import { qstashScheduler } from './_qstash.mjs'
+import { webPushSender } from './_webpush.mjs'
 import { createHash } from 'node:crypto'
 
 export async function POST(request) {
@@ -15,7 +16,7 @@ export async function POST(request) {
     const familyCode = request.headers.get('x-family-code')
     const r = await handlePush(
       { body, token: request.headers.get('x-device-token'), familyCode: familyCode === null ? undefined : familyCode },
-      { store: pushStore, scheduler: qstashScheduler, publicKey: process.env.VAPID_PUBLIC_KEY },
+      { store: pushStore, scheduler: qstashScheduler, sender: webPushSender, publicKey: process.env.VAPID_PUBLIC_KEY },
     )
     return Response.json(r.body, { status: r.status, headers: { 'Cache-Control': 'no-store' } })
   } catch (e) {

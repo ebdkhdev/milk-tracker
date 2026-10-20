@@ -293,7 +293,7 @@ function App() {
                 reminderOn={reminder.enabled}
                 reminderTime={reminder.time}
                 onEnable={() => enablePush(push, pushDevice).then((r) => { if (r === 'ok') { setPushState(loadPush()); showToast(t('notifOn')) } return r })}
-                onDisable={() => { disablePush(push).then(() => setPushState(loadPush())) }}
+                onDisable={() => { setPushState({ ...push, enabled: false }); disablePush(push) }}
                 onTest={() => { testPush(push).then((ok) => showToast(t(ok ? 'notifTestSent' : 'notifError'))) }}
                 onChange={setPush}
               />
