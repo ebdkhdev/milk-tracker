@@ -9,7 +9,8 @@ const ENDPOINT = '/api/sync'
 const CHUNK = 500 // matches MAX_CHANGES on the server
 
 export type SyncState = { code: string | null; cursor: number; lastSync: string | null }
-export type SyncStatus = 'idle' | 'syncing' | 'ok' | 'offline' | 'error'
+// 'gone': the family was deleted (from the other phone); the app then stops sharing
+export type SyncStatus = 'idle' | 'syncing' | 'ok' | 'offline' | 'error' | 'gone'
 export type SyncResult = { status: SyncStatus; applied: number; baby: Change | null }
 
 export function loadSync(): SyncState {
@@ -77,6 +78,17 @@ export async function leaveFamily() {
   await dbClearOutbox()
 }
 
+// Deletes the family and everything it shared from the server, then leaves it (local data is kept).
+export async function deleteFamily(): Promise<'ok' | 'offline'> {
+  const { code } = loadSync()
+  if (!code) return 'ok'
+  let r
+  try { r = await post({ action: 'delete' }, code) } catch (e) { return 'offline' }
+  if (r.status !== 200 && r.status !== 404) return 'offline'
+  await leaveFamily()
+  return 'ok'
+}
+
 let running: Promise<SyncResult> | null = null
 
 // Sends the outbox, pulls the family's changes, repeats until both are drained. One run at a time.
@@ -96,6 +108,7 @@ async function doSync(): Promise<SyncResult> {
       const outbox = (await dbOutbox()).slice(0, CHUNK)
       const changes: Change[] = outbox.map(({ kind, key, data, deleted, updatedAt }) => ({ kind, key, data, deleted, updatedAt }))
       const { status, json } = await post({ action: 'sync', since: state.cursor, changes }, state.code!)
+      if (status === 404) return { status: 'gone', applied, baby }
       if (status !== 200) return { status: 'error', applied, baby }
       await dbAckOutbox(changes)
       const r = await dbApplyRemote(json.changes || [])

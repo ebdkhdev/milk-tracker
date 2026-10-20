@@ -12,16 +12,18 @@ type Props = {
   onSendCode: () => void
   onSyncNow: () => void
   onLeave: () => void
+  onDelete: () => Promise<string | null> // error message, or null
 }
 
 // Settings section: create or join a family; once in, show the code to give the other parent and the sync state.
 // No QR code on purpose: on iOS a scanned QR or a tapped link opens Safari, whose storage is separate from the
 // installed app, so the code is pasted inside the app instead.
-export function ShareSettings({ code, status, lastSync, onCreate, onJoin, onSendCode, onSyncNow, onLeave }: Props) {
+export function ShareSettings({ code, status, lastSync, onCreate, onJoin, onSendCode, onSyncNow, onLeave, onDelete }: Props) {
   const { t } = useFormat()
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const run = (job: () => Promise<string | null>) => {
     setBusy(true)
@@ -72,7 +74,23 @@ export function ShareSettings({ code, status, lastSync, onCreate, onJoin, onSend
         <button className="data-btn" id="share-send" onClick={onSendCode}>{t('shareSend')}</button>
         <button className="data-btn" id="share-now" disabled={status === 'syncing'} onClick={onSyncNow}>{t('shareNow')}</button>
       </div>
-      <button className="settings-reset share-leave" id="share-leave" onClick={onLeave}>{t('shareLeave')}</button>
+      <div className="settings-actions">
+        <button className="settings-reset share-leave" id="share-leave" onClick={onLeave}>{t('shareLeave')}</button>
+        {!confirmDelete ? (
+          <button className="settings-reset share-leave" id="share-delete" onClick={() => { setError(null); setConfirmDelete(true) }}>{t('shareDelete')}</button>
+        ) : null}
+      </div>
+      {/* destructive: a second, explicit step instead of a browser dialog */}
+      {confirmDelete ? (
+        <div className="share-confirm" id="share-confirm" role="group" aria-labelledby="share-confirm-text">
+          <p id="share-confirm-text">{t('shareDeleteConfirm')}</p>
+          <div className="data-row">
+            <button className="data-btn danger" id="share-delete-yes" disabled={busy} onClick={() => run(onDelete)}>{t('shareDeleteYes')}</button>
+            <button className="data-btn" id="share-delete-no" onClick={() => setConfirmDelete(false)}>{t('cancel')}</button>
+          </div>
+        </div>
+      ) : null}
+      {error ? <p className="settings-note share-error" id="share-error" role="alert">{error}</p> : null}
     </>
   )
 }

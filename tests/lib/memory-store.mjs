@@ -8,6 +8,7 @@ export function memoryStore() {
     down: false,
     families,
     async createFamily(hash) { families.set(hash, new Map()) },
+    async deleteFamily(hash) { return families.delete(hash) },
     async sync(hash, since, changes, limit) {
       const fam = families.get(hash)
       if (!fam) return null

@@ -588,6 +588,9 @@ input[type="time"], input[type="date"], input[type="number"], input[type="text"]
 .share-status.warn { color: var(--warn); }
 .share-error { color: var(--warn); }
 .settings-reset.share-leave { color: var(--danger); }
+.share-confirm { background: var(--fill); border-radius: var(--radius); padding: 12px; margin-top: 8px; }
+.share-confirm p { margin: 0 0 10px; font-size: 0.882rem; }
+.data-btn.danger { background: var(--danger); color: var(--on-tint); } /* white on light red, black on dark-mode red */
 .data-btn:disabled { opacity: 0.5; cursor: default; }
 .feed-item .actions { flex-shrink: 0; padding-inline-end: 4px; margin-inline-start: auto; }
 .feed-item .edit, .feed-item .del {

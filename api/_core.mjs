@@ -2,7 +2,8 @@
 //
 // POST /api/sync { action: "create" }                          -> { code }
 // POST /api/sync { action: "sync", since, changes }            -> { cursor, changes, more }
-//   header X-Family-Code: the family code (never in the URL)
+// POST /api/sync { action: "delete" }                          -> { deleted: true } (family and all its records)
+//   header X-Family-Code: the family code (never in the URL); 404 when the family does not exist (any more)
 //
 // A change is { kind: "feed" | "daily" | "baby", key, data, deleted, updatedAt (ms) }. The store keeps, per
 // family and (kind, key), the change with the latest updatedAt (last write wins, deletions kept as tombstones),
@@ -51,7 +52,7 @@ export function validateChanges(changes, now) {
   return [...byKey.values()]
 }
 
-// store: { createFamily(hash), sync(hash, since, changes, limit) -> { cursor, changes, more } | null }
+// store: { createFamily(hash), sync(hash, since, changes, limit) -> { cursor, changes, more } | null, deleteFamily(hash) -> bool }
 export async function handle({ body, code }, store, now = Date.now()) {
   if (!body || typeof body !== 'object') return { status: 400, body: { error: 'bad request' } }
   if (body.action === 'create') {
@@ -59,8 +60,14 @@ export async function handle({ body, code }, store, now = Date.now()) {
     await store.createFamily(hashCode(newFamilyCode))
     return { status: 200, body: { code: newFamilyCode } }
   }
-  if (body.action === 'sync') {
+  if (body.action === 'sync' || body.action === 'delete') {
     if (normalizeCode(code).length !== 26) return { status: 401, body: { error: 'missing family code' } }
+  }
+  if (body.action === 'delete') {
+    const deleted = await store.deleteFamily(hashCode(code))
+    return deleted ? { status: 200, body: { deleted: true } } : { status: 404, body: { error: 'unknown family' } }
+  }
+  if (body.action === 'sync') {
     const since = Math.max(0, Math.floor(Number(body.since) || 0))
     const changes = validateChanges(body.changes || [], now)
     if (typeof changes === 'string') return { status: 400, body: { error: changes } }

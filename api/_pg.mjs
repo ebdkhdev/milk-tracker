@@ -17,6 +17,12 @@ export const pgStore = {
     await getPool().query('INSERT INTO families (secret_hash) VALUES ($1)', [hash])
   },
 
+  // records go with the family (ON DELETE CASCADE)
+  async deleteFamily(hash) {
+    const r = await getPool().query('DELETE FROM families WHERE secret_hash = $1', [hash])
+    return r.rowCount > 0
+  },
+
   async sync(hash, since, changes, limit) {
     const client = await getPool().connect()
     try {

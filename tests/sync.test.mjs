@@ -137,6 +137,38 @@ export async function run(DIST) {
     await syncAndWait()
     equal('A: B\'s offline bottle arrived', await amounts(), '130 ml,150 ml,90 ml')
     await close()
+
+    // B joins again, then A erases the family from the server
+    await open('B')
+    await openSettings()
+    await b.setValue('#share-code-input', code)
+    await b.click('#share-join')
+    await b.waitFor(`!!document.getElementById("share-code")`)
+    await syncAndWait()
+    await close()
+
+    await open('A')
+    await openSettings()
+    await b.click('#share-delete')
+    check('erasing asks for confirmation', await b.exists('#share-confirm'))
+    await b.click('#share-delete-no')
+    check('cancel keeps the family', (await b.exists('#share-code')) && store.families.size === 1)
+    store.down = true
+    await b.click('#share-delete'); await b.click('#share-delete-yes')
+    await b.waitFor(`!!document.getElementById("share-error")`)
+    equal('offline: nothing erased, error shown', [store.families.size, await b.text('#share-error')], [1, "Impossible d'effacer sans connexion. Réessaie plus tard."])
+    store.down = false
+    await b.click('#share-delete-yes')
+    await b.waitFor(`!!document.getElementById("share-create")`)
+    equal('family and its records erased from the server', store.families.size, 0)
+    equal('A keeps its data', await amounts(), '130 ml,150 ml,90 ml')
+    await close()
+
+    await open('B')
+    await b.waitFor(`(document.querySelector("#toast .toast-text")||{}).textContent==="La famille a été supprimée : le partage est arrêté, les données restent sur ce téléphone."`, 8000)
+    check('B leaves on its own at the next sync', !(await b.ev('localStorage.getItem("suivi-lait-sync-v1")')))
+    equal('B keeps its data', await amounts(), '130 ml,150 ml,90 ml')
+    await close()
   } finally {
     if (b) await b.close()
     await srv.stop()

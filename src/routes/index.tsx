@@ -15,7 +15,7 @@ import type { ToastMsg } from '#/components/Toast'
 import { TotalCard } from '#/components/TotalCard'
 import { VitaminDCard } from '#/components/VitaminDCard'
 import { buildBackup, parseBackup, shareOrDownload } from '#/lib/backup'
-import { createFamily, formatCode, initSync, joinFamily, leaveFamily, loadSync, syncNow } from '#/lib/sync'
+import { createFamily, deleteFamily, formatCode, initSync, joinFamily, leaveFamily, loadSync, syncNow } from '#/lib/sync'
 import type { SyncStatus } from '#/lib/sync'
 import { ShareSettings } from '#/components/ShareSettings'
 import { averageInterval, feedingRhythm } from '#/lib/rhythm'
@@ -80,6 +80,9 @@ function App() {
   const dateStr = todayStr(viewDate)
   const viewingToday = isToday(dateStr)
   const t = useMemo(() => makeT(lang), [lang])
+  // runSync is stable (useCallback []); it reads the current language and toast through refs
+  const langRef = useRef(lang)
+  langRef.current = lang
   // the clock is refreshed too, so "last bottle" never reads a time ahead of `now`
   const bump = () => { setRev((r) => r + 1); setNow(new Date()) }
 
@@ -90,12 +93,19 @@ function App() {
     toastTimer.current = setTimeout(() => setToast(null), undo ? 6000 : 3000)
   }
   useEffect(() => () => clearTimeout(toastTimer.current), [])
+  const showToastRef = useRef(showToast)
+  showToastRef.current = showToast
 
   // Sharing: one sync at a time; local writes schedule one shortly after (several taps -> one request).
   const runSync = useCallback(() => {
     if (!loadSync().code) return
     setSyncStatus('syncing')
     syncNow().then((r) => {
+      if (r.status === 'gone') {
+        // deleted from the other phone: stop sharing, keep everything local
+        leaveFamily().then(() => { setSyncState(loadSync()); setSyncStatus('idle'); showToastRef.current(makeT(langRef.current)('familyGone')) })
+        return
+      }
       setSyncStatus(r.status)
       setSyncState(loadSync())
       if (r.baby && r.baby.data) { const b = sanitizeBaby(r.baby.data); saveBaby(b); setBabyState(b) }
@@ -373,6 +383,13 @@ function App() {
                 onSendCode={sendCode}
                 onSyncNow={runSync}
                 onLeave={() => { leaveFamily().then(() => { setSyncState(loadSync()); setSyncStatus('idle'); showToast(t('left')) }) }}
+                onDelete={() => deleteFamily().then((r) => {
+                  if (r !== 'ok') return t('deleteError')
+                  setSyncState(loadSync())
+                  setSyncStatus('idle')
+                  showToast(t('deletedShared'))
+                  return null
+                })}
               />
             }
           />

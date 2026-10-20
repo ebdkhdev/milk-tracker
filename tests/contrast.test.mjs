@@ -88,6 +88,7 @@ export async function run(DIST) {
     worst(`${scheme} warn on surface and fill`, c('warn'), [c('surface'), c('fill')], 4.5)
     worst(`${scheme} danger on surface`, c('danger'), [c('surface')], 4.5)
     worst(`${scheme} on-tint on tint`, c('on-tint'), [c('tint')], 4.5)
+    worst(`${scheme} on-tint on danger (erase button)`, c('on-tint'), [c('danger')], 4.5)
 
     const px = backdrop[scheme]
     check(`${scheme} backdrop sampled (${px.length} colours)`, px.length > 10)
