@@ -25,6 +25,32 @@ await client.query(`
     PRIMARY KEY (family_id, kind, key)
   );
   CREATE INDEX IF NOT EXISTS records_family_seq ON records (family_id, seq);
+  -- push notifications: one row per phone that enabled them
+  CREATE TABLE IF NOT EXISTS push_subs (
+    id bigserial PRIMARY KEY,
+    secret_hash text NOT NULL UNIQUE,      -- sha256 of the device token kept by the phone
+    endpoint text NOT NULL,
+    p256dh text NOT NULL,
+    auth text NOT NULL,
+    family_id bigint REFERENCES families(id) ON DELETE SET NULL,
+    lang text NOT NULL DEFAULT 'fr',
+    unit text NOT NULL DEFAULT 'ml',
+    tz text NOT NULL DEFAULT 'Europe/Paris',
+    name text,
+    vitd boolean NOT NULL DEFAULT false,
+    vitd_time text NOT NULL DEFAULT '08:00',
+    next_feed boolean NOT NULL DEFAULT false,
+    partner boolean NOT NULL DEFAULT false,
+    vitd_given_date text,                  -- local date when vitamin D was last given (phones outside a family)
+    next_last_feed_at bigint, next_feed_at bigint, next_msg_id text,   -- "next bottle" for a phone alone
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+  );
+  CREATE INDEX IF NOT EXISTS push_subs_family ON push_subs (family_id);
+  -- "next bottle" for a family: one message for every opted-in phone
+  ALTER TABLE families ADD COLUMN IF NOT EXISTS next_last_feed_at bigint;
+  ALTER TABLE families ADD COLUMN IF NOT EXISTS next_feed_at bigint;
+  ALTER TABLE families ADD COLUMN IF NOT EXISTS next_msg_id text;
   CREATE TABLE IF NOT EXISTS rate_hits (
     bucket text PRIMARY KEY,               -- kind + hash (IPs are never stored in clear)
     count int NOT NULL,

@@ -84,7 +84,9 @@ export async function handle({ body, code, ip }, store, now = Date.now()) {
     if (typeof changes === 'string') return { status: 400, body: { error: changes } }
     const result = await store.sync(hashCode(code), since, changes, MAX_PULL)
     if (!result) return { status: 404, body: { error: 'unknown family' } }
-    return { status: 200, body: result }
+    // inserted / familyId are for the server only (partner notifications), not part of the response
+    const { inserted = [], familyId, ...pub } = result
+    return { status: 200, body: pub, inserted, familyId }
   }
   return { status: 400, body: { error: 'unknown action' } }
 }
