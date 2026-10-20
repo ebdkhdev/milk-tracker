@@ -17,7 +17,7 @@ for (const name of only.length ? only : SUITES) {
   try {
     await mod.run(DIST)
   } catch (e) {
-    results.push({ suite: name, name: 'crashed', ok: false })
+    results.push({ suite: name, name: 'crashed', ok: false, detail: String(e.stack || e).split('\n').slice(0, 3).join(' | ') })
     console.log(`  ✗ ${name} crashed: ${e.stack || e}`)
   }
 }
@@ -25,5 +25,10 @@ const failed = results.filter((r) => !r.ok)
 console.log(`\n${results.length - failed.length}/${results.length} checks passed`)
 if (failed.length) {
   console.log('Failed:\n' + failed.map((f) => `  ${f.suite} › ${f.name}`).join('\n'))
+  // on GitHub Actions, failures also become annotations, readable on the run page without opening the logs
+  if (process.env.GITHUB_ACTIONS) {
+    const esc = (s) => String(s).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')
+    failed.forEach((f) => console.log(`::error title=${esc(f.suite + ' › ' + f.name)}::${esc(f.detail || 'failed')}`))
+  }
   process.exit(1)
 }

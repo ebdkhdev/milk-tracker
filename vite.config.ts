@@ -8,6 +8,9 @@ import viteReact from '@vitejs/plugin-react'
 // render on a server. The build prerenders a static shell as /index.html and the app renders client-side.
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  // The prerender step fetches the shell from a preview server at 127.0.0.1; without an explicit IPv4 host the
+  // server can listen on ::1 only (Linux containers, CI) and the build fails with ECONNREFUSED.
+  preview: { host: '127.0.0.1' },
   plugins: [
     tanstackStart({ spa: { enabled: true, prerender: { outputPath: '/index.html' } } }),
     viteReact(),

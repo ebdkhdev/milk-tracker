@@ -3,7 +3,7 @@ export const results = []
 let current = ''
 export function suite(name) { current = name; console.log('\n' + name) }
 export function check(name, ok, detail = '') {
-  results.push({ suite: current, name, ok: !!ok })
+  results.push({ suite: current, name, ok: !!ok, detail })
   console.log(`  ${ok ? '✓' : '✗'} ${name}${!ok && detail ? '\n      ' + detail : ''}`)
 }
 export function equal(name, actual, expected) {
