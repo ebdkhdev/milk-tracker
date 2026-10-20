@@ -65,11 +65,14 @@ export async function run(DIST) {
     await b.waitFor(`document.getElementById("total-number").textContent==="710"`)
     check('past-day add uses the chosen time', (await b.ev(`[...document.querySelectorAll(".feed-item .time")].map(e=>e.textContent).join(",")`)).includes('10:15'))
 
+    await b.tab('stats')
     await b.click('.history-row', 0)
     await b.waitFor(`!!document.getElementById("last-feed")`)
-    check('history row opens today', true)
+    check('history row opens today on the bottles tab', await b.ev(`document.getElementById("tab-feeds").getAttribute("aria-current")==="page"`))
+    await b.tab('stats')
     await b.click('#period-30'); await sleep(200)
     equal('30 days of history', await b.count('.history-row'), 30)
+    await b.tab('feeds')
 
     await b.click('#unit-oz'); await sleep(200)
     equal('ounces', await b.text('#total-unit-label'), 'oz')

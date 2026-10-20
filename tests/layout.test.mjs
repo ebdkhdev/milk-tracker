@@ -19,10 +19,14 @@ export async function run(DIST) {
     await b.setValue('.feed-note-input', 'Une note assez longue pour vérifier le retour à la ligne : régurgitation après le biberon, à surveiller demain matin')
     await b.click('.feed-edit .save'); await sleep(200)
     await b.click('.feed-item .del', 1) // shows the toast with its undo button
-    await b.click('#settings-btn')
-    await sleep(200)
 
-    const targets = await b.ev(`(function(){
+    // every tab, plus the tab bar itself (the settings panel stays open on the first one)
+    const tabs = await b.ev(`[...document.querySelectorAll(".tabbar button")].map(function(e){return e.id.slice(4)})`)
+    const targets = []
+    for (const name of tabs) {
+      await b.tab(name)
+      if (name === tabs[0]) { await b.click('#settings-btn'); await sleep(200) }
+      targets.push(...(await b.ev(`(function(){
       var out=[];
       document.querySelectorAll("button,a,select,input:not(.visually-hidden),label.data-btn,.history-row").forEach(function(e){
         var r=e.getBoundingClientRect(); if(!r.width || getComputedStyle(e).pointerEvents==="none") return;
@@ -32,14 +36,16 @@ export async function run(DIST) {
         var key=e.id?"#"+e.id:(e.className||e.tagName).toString().split(" ")[0];
         out.push([key, Math.round(r.width), Math.round(r.height+2*ext)]);
       });
-      return out;})()`)
-    const small = targets.filter(([k, w, h]) => (w < 44 || h < 44) && !SMALL_OK.includes(k) && !(k === '#settings-btn' && h >= 44 && w >= 36))
+      return out;})()`)).map(([k, w, h]) => [name + ' ' + k, w, h]))
+    }
+    await b.tab(tabs[0])
+    const small = targets.filter(([k, w, h]) => (w < 44 || h < 44) && !SMALL_OK.includes(k.split(' ')[1]) && !(k.endsWith('#settings-btn') && h >= 44 && w >= 36))
     check(`touch targets >= 44 pt (${targets.length} checked)`, small.length === 0, JSON.stringify(small))
     const tiny = targets.filter(([, w, h]) => w < 28 || h < 28)
     check('nothing below the 28 pt minimum', tiny.length === 0, JSON.stringify(tiny))
 
     const overflow = () => b.ev(`(function(){var W=document.documentElement.clientWidth, over=[];
-      document.querySelectorAll(".wrap *, .toast *").forEach(function(e){var r=e.getBoundingClientRect(); if(r.width && (r.right>W+1||r.left<-1) && !e.closest(".visually-hidden,.brand-name")) over.push(e.id||e.className||e.tagName)});
+      document.querySelectorAll(".wrap *, .toast *, .tabbar *").forEach(function(e){var r=e.getBoundingClientRect(); if(r.width && (r.right>W+1||r.left<-1) && !e.closest(".visually-hidden,.brand-name")) over.push(e.id||e.className||e.tagName)});
       return {scroll: document.documentElement.scrollWidth>W, over: over.slice(0,6)}})()`)
     for (const pct of [150, 200]) {
       await b.ev(`document.documentElement.style.fontSize="${pct * 1.0625}%"`); await sleep(200)

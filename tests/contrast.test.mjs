@@ -59,7 +59,7 @@ export async function run(DIST) {
   const backdrop = { light: [], dark: [] }
   try {
     await b.goto(srv.url)
-    await b.ev(`document.querySelector(".wrap").style.visibility="hidden"`)
+    await b.ev(`document.querySelectorAll(".wrap, .tabbar").forEach(function(e){e.style.visibility="hidden"})`)
     for (const scheme of ['light', 'dark']) {
       await b.media({ 'prefers-color-scheme': scheme })
       const seen = new Set()
@@ -101,5 +101,9 @@ export async function run(DIST) {
     // floating glass (top bar capsules, toast) over the largest coloured areas that can scroll beneath
     const under = ['bg', 'surface', 'fill', 'tint', 'good', 'warn'].map(c).concat(panels)
     worst(`${scheme} label on floating glass`, c('label'), under.map((u) => over(c('glass'), u)), 4.5)
+    // tab bar labels: inactive (label-on-bg) and active (tint), over anything that scrolls beneath it
+    const bar = under.map((u) => over(c('tabbar'), u))
+    worst(`${scheme} inactive tab label on the tab bar`, c('label-on-bg'), bar, 4.5)
+    worst(`${scheme} active tab label on the tab bar`, c('tint'), bar, 4.5)
   }
 }

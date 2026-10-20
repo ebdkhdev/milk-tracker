@@ -11,6 +11,8 @@ import { NotificationSettings } from '#/components/NotificationSettings'
 import { Report } from '#/components/Report'
 import { ShareSettings } from '#/components/ShareSettings'
 import { Stats, buildRows } from '#/components/Stats'
+import { TabBar } from '#/components/TabBar'
+import type { Tab } from '#/components/TabBar'
 import { Toast } from '#/components/Toast'
 import { TotalCard } from '#/components/TotalCard'
 import { VitaminDCard } from '#/components/VitaminDCard'
@@ -70,6 +72,7 @@ function App() {
   const [customTime, setCustomTime] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [period, setPeriod] = useState<7 | 30>(7)
+  const [tab, setTabState] = useState<Tab>('feeds')
 
   const dateStr = todayStr(viewDate)
   const viewingToday = isToday(dateStr)
@@ -164,6 +167,14 @@ function App() {
       navigator.serviceWorker.register('/sw.js').catch((e) => console.error('SW', e))
     }
   }, [])
+
+  // switching tab: leaves the report and edit mode, starts at the top
+  const setTab = (next: Tab) => {
+    setTabState(next)
+    setReportOpen(false)
+    setEditingId(null)
+    window.scrollTo(0, 0)
+  }
 
   // back from the report: return focus to the button that opened it
   useEffect(() => {
@@ -409,6 +420,7 @@ function App() {
         ) : (
           <InstallBanner />
         )}
+        {tab === 'feeds' ? <>
         <DayNav viewDate={viewDate} onGo={goToDate} />
         <TotalCard
           totalMl={entries.reduce((s, e) => s + e.ml, 0)}
@@ -429,18 +441,20 @@ function App() {
         />
         <AddFeed past={!viewingToday} quick={quick} milk={milk} onMilkType={(type) => setMilk({ ...milk, last: type })} customTime={customTime} onCustomTime={setCustomTime} onAdd={addEntry} />
         <FeedList entries={entries} editingId={editingId} trackMilk={milk.track} onEdit={setEditingId} onSave={updateEntry} onDelete={removeEntry} />
-        <Stats
+        </> : null}
+        {tab === 'stats' ? <Stats
           rows={rows}
           period={period}
           viewing={dateStr}
           onPeriod={setPeriod}
           avgIntervalMin={periodInterval}
-          onOpen={(ds) => { goToDate(parseDay(ds)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+          onOpen={(ds) => { goToDate(parseDay(ds)); setTab('feeds') }}
           onReport={() => { setSettingsOpen(false); setReportOpen(true) }}
-        />
+        /> : null}
         <Footer shared={!!sharing.code} push={push.enabled} />
         </>}
       </div>
+      <TabBar tabs={['feeds', 'stats']} tab={tab} onTab={setTab} />
       <Toast toast={toast} onDone={closeToast} />
     </FormatProvider>
   )

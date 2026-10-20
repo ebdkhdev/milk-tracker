@@ -33,6 +33,7 @@ export async function run(DIST) {
     await b.setFiles('#import-file', [file]); await sleep(500)
     await b.click('#settings-close')
 
+    await b.tab('stats')
     const tiles = await b.ev(`Object.fromEntries([...document.querySelectorAll(".stat")].map(e=>[e.querySelector(".sl").textContent, e.querySelector(".sv").textContent]))`)
     await b.click('#report-btn'); await sleep(300)
     check('report replaces the main view', (await b.exists('#report')) && !(await b.exists('#total-number')))
@@ -60,10 +61,11 @@ export async function run(DIST) {
     await b.send('Emulation.setEmulatedMedia', { media: '', features: [] })
 
     await b.click('#report-close'); await sleep(300)
-    check('back to the main view', await b.exists('#total-number'))
+    check('back to the stats view', (await b.exists('#report-btn')) && !(await b.exists('#report')))
     equal('focus back on the report button', await b.ev('document.activeElement.id'), 'report-btn')
 
     await b.setValue('#lang-select', 'ar')
+    await b.tab('stats')
     await b.click('#report-btn'); await sleep(200)
     for (const [w, pct] of [[320, 100], [390, 200]]) {
       await b.viewport(w, 700)

@@ -105,6 +105,8 @@ function makePage(send, ev) {
       Object.getOwnPropertyDescriptor(proto,"value").set.call(e,${q(v)});
       e.dispatchEvent(new Event("input",{bubbles:true})); e.dispatchEvent(new Event("change",{bubbles:true}));})()`),
     waitFor: (expr, ms) => waitFor(ev, expr, ms),
+    // switches to a tab of the bottom bar (feeds, diapers, sleep, growth, stats)
+    tab: async (name) => { await ev(`document.getElementById("tab-${name}").click()`); await sleep(150) },
     // puts local files into an <input type=file>, which fires its change event
     setFiles: async (sel, files) => {
       const { root } = await send('DOM.getDocument')

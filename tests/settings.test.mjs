@@ -78,9 +78,11 @@ export async function run(DIST) {
     await b.click('.feed-item .edit', await rowIdx('140 ml'))
     await b.click('#edit-milk-breast')
     await b.click('.feed-edit .save'); await sleep(200)
+    await b.tab('stats')
     const tile = await b.ev(`[...document.querySelectorAll(".stat")].map(e=>e.textContent).find(s=>s.indexOf("lait maternel")>=0)`)
     // today: 140 breast + 80 formula typed; the earlier untyped bottles are left out
     equal('breast milk share by volume', tile, '64%lait maternel (en volume)')
+    await b.tab('feeds')
     equal('note kept when only the type changes', await b.text('.feed-note'), 'a peu bu')
     equal('no JS errors', b.errors, [])
   } finally {

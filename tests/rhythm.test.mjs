@@ -33,8 +33,10 @@ export async function run(DIST) {
 
     let t0 = await seed([600, 420, 240, 60])
     equal('every 3 h, next = last + 3 h', await b.text('#rhythm'), `Toutes les 3 h en moyenne · prochain vers ${hhmm(new Date(t0 + 120 * 60000))}`)
+    await b.tab('stats')
     equal('interval tile', await b.ev(`[...document.querySelectorAll(".stat")].map(e=>e.textContent).find(s=>s.indexOf("entre deux")>=0)`), '3:00hentre deux biberons')
 
+    await b.tab('feeds')
     t0 = await seed([700, 500, 300, 200])
     equal('overdue wording', await b.text('#rhythm'), `Toutes les 2 h 47 min en moyenne · prochain attendu depuis ${hhmm(new Date(t0 - 200 * 60000 + (500 / 3) * 60000))}`)
 
