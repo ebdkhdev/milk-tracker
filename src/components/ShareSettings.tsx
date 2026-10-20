@@ -10,8 +10,6 @@ type Props = {
   lastSync: string | null
   name: string
   onName: (name: string) => void
-  onCreate: () => Promise<string | null> // error message, or null
-  onJoin: (code: string) => Promise<string | null>
   onSendCode: () => void
   onSyncNow: () => void
   onLeave: () => void
@@ -21,9 +19,8 @@ type Props = {
 // Settings section: create or join a family; once in, show the code to give the other parent and the sync state.
 // No QR code on purpose: on iOS a scanned QR or a tapped link opens Safari, whose storage is separate from the
 // installed app, so the code is pasted inside the app instead.
-export function ShareSettings({ code, status, lastSync, name, onName, onCreate, onJoin, onSendCode, onSyncNow, onLeave, onDelete }: Props) {
+export function ShareSettings({ code, status, lastSync, name, onName, onSendCode, onSyncNow, onLeave, onDelete }: Props) {
   const { t } = useFormat()
-  const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -34,34 +31,8 @@ export function ShareSettings({ code, status, lastSync, name, onName, onCreate, 
     job().then((err) => { setError(err); setBusy(false) })
   }
 
-  if (!code) {
-    return (
-      <>
-        <p className="settings-note share-intro">{t('shareIntro')}</p>
-        <div className="data-row">
-          <button className="data-btn" id="share-create" disabled={busy} onClick={() => run(onCreate)}>{t('shareCreate')}</button>
-        </div>
-        <label className="share-join">
-          <span className="visually-hidden">{t('shareJoinLabel')}</span>
-          <input
-            type="text"
-            id="share-code-input"
-            autoCapitalize="characters"
-            autoComplete="off"
-            spellCheck={false}
-            placeholder={t('shareJoinLabel')}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-          />
-          <button className="data-btn" id="share-join" disabled={busy || input.replace(/[^a-z0-9]/gi, '').length < 26} onClick={() => run(() => onJoin(input))}>
-            {t('shareJoin')}
-          </button>
-        </label>
-        <p className="settings-note">{t('shareJoinNote')}</p>
-        {error ? <p className="settings-note share-error" id="share-error" role="alert">{error}</p> : null}
-      </>
-    )
-  }
+  // new sharing goes through accounts (invitation by email); a code family is only shown to phones in one
+  if (!code) return <p className="settings-note" id="share-signin-note">{t('signInToShare')}</p>
 
   const statusText =
     status === 'syncing' ? t('syncing')
@@ -84,6 +55,7 @@ export function ShareSettings({ code, status, lastSync, name, onName, onCreate, 
         />
       </label>
       <p className="settings-note">{t('deviceNameNote')}</p>
+      <p className="settings-note" id="legacy-code-note">{t('legacyCodeNote')}</p>
       <p className="share-code" id="share-code" dir="ltr">{code}</p>
       <p className="settings-note">{t('shareCodeNote')}</p>
       <p className={'share-status' + (status === 'offline' || status === 'error' ? ' warn' : '')} id="share-status" aria-live="polite">{statusText}</p>

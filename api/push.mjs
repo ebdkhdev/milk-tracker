@@ -1,5 +1,5 @@
 // Vercel Function: push subscription and state (see _push.mjs).
-import { neonKeySet, verifyAccount } from './_account.mjs'
+import { familyFromAccount, neonKeySet } from './_account.mjs'
 import { handlePush } from './_push.mjs'
 import { accountStore, pgStore, pushStore } from './_pg.mjs'
 import { qstashScheduler } from './_qstash.mjs'
@@ -16,12 +16,10 @@ export async function POST(request) {
     }
     const familyCode = request.headers.get('x-family-code')
     // signed in: the household comes from the account (the code header is then ignored)
-    let familyId
-    if (request.headers.get('authorization')) {
-      const userId = await verifyAccount(request.headers.get('authorization'), neonKeySet())
-      if (!userId) return Response.json({ error: 'bad token' }, { status: 401 })
-      familyId = await accountStore.memberFamily(userId)
-    }
+    // (no household yet: the phone's reminders still work, without the family features)
+    const account = await familyFromAccount(request.headers.get('authorization'), neonKeySet(), accountStore)
+    if (account.status === 401) return Response.json({ error: account.error }, { status: 401 })
+    const familyId = account.familyId === undefined ? undefined : account.familyId || null
     const r = await handlePush(
       { body, token: request.headers.get('x-device-token'), familyCode: familyCode === null ? undefined : familyCode, familyId },
       { store: pushStore, scheduler: qstashScheduler, sender: webPushSender, publicKey: process.env.VAPID_PUBLIC_KEY },

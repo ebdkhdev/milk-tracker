@@ -7,7 +7,9 @@ import { join } from 'node:path'
 import { tokenHash } from '../api/_push.mjs'
 import { launch, serve, sleep } from './lib/browser.mjs'
 import { check, equal, suite } from './lib/assert.mjs'
-import { fakeScheduler, fakeSender, memoryPushStore, memoryStore } from './lib/memory-store.mjs'
+import { fakeAuth } from './lib/fakeauth.mjs'
+import { acceptInvite, invite, signUp } from './lib/family.mjs'
+import { fakeScheduler, fakeSender, memoryAccountStore, memoryPushStore, memoryStore } from './lib/memory-store.mjs'
 
 const pad = (n) => String(n).padStart(2, '0')
 const day = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
@@ -25,6 +27,10 @@ export async function run(DIST) {
   const syncStore = memoryStore()
   const pushStore = memoryPushStore()
   pushStore.familyId = async (h) => (syncStore.families.has(h) ? h : null) // the sync store keys families by hash
+  const accounts = memoryAccountStore(syncStore)
+  const auth = await fakeAuth(accounts)
+  syncStore.account = { store: accounts, keys: auth.keys }
+  syncStore.fakeAuth = auth
   const scheduler = fakeScheduler(), sender = fakeSender()
   syncStore.push = { store: pushStore, scheduler, sender, publicKey: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U' }
   const srv = await serve(DIST, 8765, syncStore)
@@ -32,7 +38,7 @@ export async function run(DIST) {
   const profiles = { A: mkdtempSync(join(tmpdir(), 'mt-notif-a-')), B: mkdtempSync(join(tmpdir(), 'mt-notif-b-')) }
   let b = null
   const open = async (phone, ua) => {
-    b = await launch({ profile: profiles[phone] })
+    b = await launch({ profile: profiles[phone], fakeAuth: true })
     await b.send('Page.addScriptToEvaluateOnNewDocument', { source: STUB(phone) })
     if (ua) await b.send('Emulation.setUserAgentOverride', { userAgent: ua })
     await b.send('Browser.grantPermissions', { origin: srv.url.replace(/\/$/, ''), permissions: ['notifications'] })
@@ -80,21 +86,18 @@ export async function run(DIST) {
     const next = scheduler.calls.filter((c) => c[0] === 'next').pop()
     check('next bottle scheduled 3 h after the last one', next && Math.abs(next[3] - (t0 - 60 * 60000 + 180 * 60000)) < 2000, JSON.stringify(next))
 
-    // family: A creates it; B (another phone, no notifications) adds a bottle -> A is notified, B is not
-    await b.click('#share-create')
-    await b.waitFor(`!!document.getElementById("share-code")`)
-    const code = await b.text('#share-code')
+    // family: A signs up and invites B; B (another phone, no notifications) adds a bottle -> A is notified
+    await signUp(b, 'maman@example.com', 'Maman')
     await b.type('#device-name', 'Maman')
+    await invite(b, 'papa@example.com')
     sub = await waitSub((s) => s.familyId, 'family link')
     check('A linked to the family on the server', !!sub.familyId)
     check('partner notifications on by default in a family', (await b.exists('#notif-partner')) && sub.partner)
     await close()
 
     await open('B')
-    await openSettings()
-    await b.setValue('#share-code-input', code)
-    await b.click('#share-join')
-    await b.waitFor(`!!document.getElementById("share-code")`)
+    await signUp(b, 'papa@example.com', 'Papa')
+    await acceptInvite(b)
     await sleep(2500) // joining syncs once
     sender.sent.length = 0
     await b.type('#device-name', 'Papa')

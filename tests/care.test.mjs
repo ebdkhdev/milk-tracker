@@ -4,16 +4,22 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { launch, serve, sleep } from './lib/browser.mjs'
 import { check, equal, suite } from './lib/assert.mjs'
-import { memoryStore } from './lib/memory-store.mjs'
+import { fakeAuth } from './lib/fakeauth.mjs'
+import { signUp } from './lib/family.mjs'
+import { memoryAccountStore, memoryStore } from './lib/memory-store.mjs'
 
 export async function run(DIST) {
   suite('Diapers and sleep')
   const store = memoryStore()
+  const accounts = memoryAccountStore(store)
+  const auth = await fakeAuth(accounts)
+  store.account = { store: accounts, keys: auth.keys }
+  store.fakeAuth = auth
   const srv = await serve(DIST, 8765, store)
   const profiles = { A: mkdtempSync(join(tmpdir(), 'mt-care-a-')), B: mkdtempSync(join(tmpdir(), 'mt-care-b-')) }
   let b = null
   const open = async (phone) => {
-    b = await launch({ profile: profiles[phone] })
+    b = await launch({ profile: profiles[phone], fakeAuth: true })
     await b.goto(srv.url)
     if (!(await b.ev('localStorage.getItem("suivi-lait-lang-v1")'))) { await b.ev('localStorage.setItem("suivi-lait-lang-v1","fr")'); await b.reload() }
   }
@@ -99,18 +105,14 @@ export async function run(DIST) {
     await b.setValue('#baby-select', await b.ev('document.querySelectorAll("#baby-select option")[0].value')); await sleep(200)
     equal('first baby unchanged', await b.text('#diaper-total'), '3')
 
-    // sync: B joins and sees both babies' diapers
-    await b.click('#settings-btn'); await b.click('#share-create')
-    await b.waitFor(`!!document.getElementById("share-code")`)
-    const code = await b.text('#share-code')
+    // sync: A signs up; B (another device of the same account) sees both babies' diapers
+    await signUp(b, 'parent@example.com', 'Parent')
     await b.click('#settings-close')
     await syncAndWait()
     await close()
 
     await open('B')
-    await b.click('#settings-btn')
-    await b.setValue('#share-code-input', code); await b.click('#share-join')
-    await b.waitFor(`!!document.getElementById("share-code")`)
+    await signUp(b, 'parent@example.com', '', true)
     await b.click('#settings-close')
     await syncAndWait()
     await b.tab('diapers')

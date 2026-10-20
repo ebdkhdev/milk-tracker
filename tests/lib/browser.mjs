@@ -27,7 +27,8 @@ export function findChrome() {
 }
 
 // profile: reuse a directory to keep storage/service worker across launches (upgrade test)
-export async function launch({ profile } = {}) {
+// fakeAuth: install the stand-in for Neon Auth (tests/lib/fakeauth.mjs) in every page
+export async function launch({ profile, fakeAuth = false } = {}) {
   const chrome = findChrome()
   if (!chrome) throw new Error('Chrome not found: set CHROME_PATH')
   // a Chrome left over by an interrupted run would answer instead, with its old profile
@@ -67,6 +68,10 @@ export async function launch({ profile } = {}) {
   }
   await send('Runtime.enable')
   await send('Page.enable')
+  if (fakeAuth) {
+    const { FAKE_AUTH_SCRIPT } = await import('./fakeauth.mjs')
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: FAKE_AUTH_SCRIPT })
+  }
   await viewport(send, 390, 844)
   // Browser.close lets Chrome flush localStorage to disk (a plain kill can lose recent writes)
   const close = async () => {
@@ -148,24 +153,43 @@ const TYPES = {
 export async function serve(dir, port = 8765, api = null) {
   const state = { dir }
   const server = createServer(async (req, res) => {
+    // the fake Neon Auth of tests/lib/fakeauth.mjs (api.fakeAuth)
+    if (req.url.startsWith('/test-auth/') && api && api.fakeAuth) {
+      let raw = ''
+      for await (const chunk of req) raw += chunk
+      const out = await api.fakeAuth.handle(req.url.slice('/test-auth/'.length), raw ? JSON.parse(raw) : {})
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(out))
+      return
+    }
     if (req.url.startsWith('/api/')) {
       // api.down: drop the connection, like a phone without network
       if (api && api.down) { req.socket.destroy(); return }
       const isPush = req.url === '/api/push' && api && api.push
-      if (!api || req.method !== 'POST' || (req.url !== '/api/sync' && !isPush)) { res.writeHead(404); res.end(); return }
+      const isAccount = req.url === '/api/account' && api && api.account
+      if (!api || req.method !== 'POST' || (req.url !== '/api/sync' && !isPush && !isAccount)) { res.writeHead(404); res.end(); return }
       let raw = ''
       for await (const chunk of req) raw += chunk
       let body = null
       try { body = JSON.parse(raw) } catch (e) {}
       const send = (r) => { res.writeHead(r.status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(r.body)) }
       const push = await import('../../api/_push.mjs')
+      const acct = await import('../../api/_account.mjs')
+      // api.account = { store: memoryAccountStore, keys: local JWKS } — same resolution as the Vercel functions
+      const account = api.account ? await acct.familyFromAccount(req.headers.authorization, api.account.keys, api.account.store) : { familyId: undefined }
+      if (isAccount) {
+        send(await acct.handleAccount({ body, userId: await acct.verifyAccount(req.headers.authorization, api.account.keys) }, api.account.store))
+        return
+      }
+      if (account.status === 401 || (account.error && !isPush)) { send({ status: account.status, body: { error: account.error } }); return }
       if (isPush) {
         // api.push = { store, scheduler, sender, publicKey } (memoryPushStore + fakes)
-        send(await push.handlePush({ body, token: req.headers['x-device-token'], familyCode: req.headers['x-family-code'] }, api.push))
+        const familyId = account.familyId === undefined ? undefined : account.familyId || null
+        send(await push.handlePush({ body, token: req.headers['x-device-token'], familyCode: req.headers['x-family-code'], familyId }, api.push))
         return
       }
       const { handle } = await import('../../api/_core.mjs')
-      const r = await handle({ body, code: req.headers['x-family-code'], ip: req.socket.remoteAddress }, api)
+      const r = await handle({ body, code: req.headers['x-family-code'], ip: req.socket.remoteAddress, familyId: account.familyId }, api)
       send(r)
       // like api/sync.mjs: tell the other parent about new bottles
       if (api.push && r.inserted && r.inserted.length) {

@@ -1,29 +1,36 @@
-// Family sharing, client side. Local data stays the source of truth and the app works offline: local writes
-// are queued (db.ts outbox) and sent to /api/sync, which returns what the other phones changed since our
-// cursor. Conflicts: last write wins (updatedAt), decided by the server and re-checked in dbApplyRemote.
+// Sync with the server, client side. Local data stays the source of truth and the app works offline: local
+// writes are queued (db.ts outbox) and sent to /api/sync, which returns what the household's other phones
+// changed since our cursor. Conflicts: last write wins (updatedAt), decided by the server and re-checked in
+// dbApplyRemote. Two ways to reach the household: a signed-in account (Authorization: Bearer, `account`) or,
+// for phones not signed in that were already sharing, the family code (X-Family-Code).
 import { dbAckOutbox, dbApplyRemote, dbClearOutbox, dbOutbox, dbQueueAll, onQueued, setQueueing } from './db'
 import type { Change } from './db'
+import { auth } from './auth'
 import { deviceToken } from './push'
 
 const SYNC_KEY = 'suivi-lait-sync-v1'
 const ENDPOINT = '/api/sync'
 const CHUNK = 500 // matches MAX_CHANGES on the server
 
-export type SyncState = { code: string | null; cursor: number; lastSync: string | null }
-// 'gone': the family was deleted (from the other phone); the app then stops sharing
-export type SyncStatus = 'idle' | 'syncing' | 'ok' | 'offline' | 'error' | 'gone'
+export type SyncState = { code: string | null; account: boolean; cursor: number; lastSync: string | null }
+// 'gone': the family was deleted (from the other phone); the app then stops sharing.
+// 'nohousehold': signed in but not (or no longer) in a household: the app links one and syncs again.
+export type SyncStatus = 'idle' | 'syncing' | 'ok' | 'offline' | 'error' | 'gone' | 'nohousehold'
 export type SyncResult = { status: SyncStatus; applied: number; baby: Change | null; profiles: Change[] }
 
 export function loadSync(): SyncState {
   try {
     const s = JSON.parse(localStorage.getItem(SYNC_KEY) || 'null')
-    if (s && typeof s === 'object' && typeof s.code === 'string') return { code: s.code, cursor: Number(s.cursor) || 0, lastSync: s.lastSync || null }
+    if (s && typeof s === 'object' && (typeof s.code === 'string' || s.account === true)) {
+      return { code: typeof s.code === 'string' ? s.code : null, account: s.account === true, cursor: Number(s.cursor) || 0, lastSync: s.lastSync || null }
+    }
   } catch (e) {}
-  return { code: null, cursor: 0, lastSync: null }
+  return { code: null, account: false, cursor: 0, lastSync: null }
 }
+const syncing = (s: SyncState) => !!s.code || s.account
 function saveSync(s: SyncState) {
   try {
-    if (s.code) localStorage.setItem(SYNC_KEY, JSON.stringify(s))
+    if (syncing(s)) localStorage.setItem(SYNC_KEY, JSON.stringify(s))
     else localStorage.removeItem(SYNC_KEY)
   } catch (e) {}
 }
@@ -33,16 +40,28 @@ export const formatCode = (code: string) => code.toUpperCase().replace(/[^A-Z0-9
 
 // Called on boot: a device that is in a family queues its writes from now on.
 export function initSync(onLocalChange: () => void) {
-  setQueueing(!!loadSync().code)
+  setQueueing(syncing(loadSync()))
   onQueued(onLocalChange)
 }
 
-async function post(body: object, code?: string) {
+// who is calling: a family code, or a fresh account token (tokens last 15 minutes)
+type Caller = { code?: string; token?: string }
+async function callerOf(s: SyncState, fresh = false): Promise<Caller | null> {
+  if (s.account) {
+    const token = await (await auth()).token(fresh)
+    return token ? { token } : null
+  }
+  return s.code ? { code: s.code } : null
+}
+
+async function post(body: object, caller: Caller | string = {}) {
+  const c = typeof caller === 'string' ? { code: caller } : caller
   const res = await fetch(ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(code ? { 'X-Family-Code': code } : {}),
+      ...(c.code ? { 'X-Family-Code': c.code } : {}),
+      ...(c.token ? { Authorization: 'Bearer ' + c.token } : {}),
       ...(deviceToken() ? { 'X-Device-Token': deviceToken()! } : {}),
     },
     body: JSON.stringify(body),
@@ -71,26 +90,40 @@ export async function joinFamily(code: string): Promise<'ok' | 'unknown' | 'offl
 
 // Both create and join merge this device's whole history into the family.
 async function startSharing(code: string) {
-  saveSync({ code, cursor: 0, lastSync: null })
+  saveSync({ code, account: false, cursor: 0, lastSync: null })
+  setQueueing(true)
+  await dbQueueAll()
+}
+
+// Signed in and linked to a household: sync through the account from now on (the family code, if any, has
+// been used to link and is dropped). The whole history is queued: that is how local data reaches the server.
+export async function startAccountSync() {
+  saveSync({ code: null, account: true, cursor: 0, lastSync: null })
   setQueueing(true)
   await dbQueueAll()
 }
 
 // Leaving keeps every record on this device; it only stops sharing.
 export async function leaveFamily() {
-  saveSync({ code: null, cursor: 0, lastSync: null })
+  saveSync({ code: null, account: false, cursor: 0, lastSync: null })
   setQueueing(false)
   await dbClearOutbox()
 }
 
 // Deletes the family and everything it shared from the server, then leaves it (local data is kept).
 export async function deleteFamily(): Promise<'ok' | 'offline'> {
-  const { code } = loadSync()
-  if (!code) return 'ok'
+  const state = loadSync()
+  if (!syncing(state)) return 'ok'
   let r
-  try { r = await post({ action: 'delete' }, code) } catch (e) { return 'offline' }
+  try {
+    const caller = await callerOf(state)
+    if (!caller) return 'offline'
+    r = await post({ action: 'delete' }, caller)
+  } catch (e) { return 'offline' }
   if (r.status !== 200 && r.status !== 404) return 'offline'
-  await leaveFamily()
+  // signed in: the account stays, syncing resumes into a new household at the next sync
+  if (state.account) saveSync({ ...state, cursor: 0, lastSync: null })
+  else await leaveFamily()
   return 'ok'
 }
 
@@ -105,7 +138,7 @@ export function syncNow(): Promise<SyncResult> {
 
 async function doSync(): Promise<SyncResult> {
   let state = loadSync()
-  if (!state.code) return { status: 'idle', applied: 0, baby: null, profiles: [] }
+  if (!syncing(state)) return { status: 'idle', applied: 0, baby: null, profiles: [] }
   let applied = 0
   let baby: Change | null = null
   const profiles: Change[] = []
@@ -113,7 +146,13 @@ async function doSync(): Promise<SyncResult> {
     for (let round = 0; round < 50; round++) {
       const outbox = (await dbOutbox()).slice(0, CHUNK)
       const changes: Change[] = outbox.map(({ kind, key, data, deleted, updatedAt }) => ({ kind, key, data, deleted, updatedAt }))
-      const { status, json } = await post({ action: 'sync', since: state.cursor, changes }, state.code!)
+      const caller = await callerOf(state)
+      if (!caller) return { status: 'error', applied, baby, profiles } // signed out elsewhere: no token
+      let { status, json } = await post({ action: 'sync', since: state.cursor, changes }, caller)
+      // an expired token: one retry with a fresh one
+      if (status === 401 && state.account) ({ status, json } = await post({ action: 'sync', since: state.cursor, changes }, (await callerOf(state, true)) || {}))
+      // signed in: no household (409), or one that was just erased (404): link a new one
+      if ((status === 409 || status === 404) && state.account) return { status: 'nohousehold', applied, baby, profiles }
       if (status === 404) return { status: 'gone', applied, baby, profiles }
       if (status !== 200) return { status: 'error', applied, baby, profiles }
       await dbAckOutbox(changes)
@@ -122,7 +161,7 @@ async function doSync(): Promise<SyncResult> {
       if (r.baby && (!baby || baby.updatedAt < r.baby.updatedAt)) baby = r.baby
       profiles.push(...r.profiles)
       // the user may have left the family while this request was in flight
-      if (!loadSync().code) return { status: 'idle', applied, baby: null, profiles: [] }
+      if (!syncing(loadSync())) return { status: 'idle', applied, baby: null, profiles: [] }
       state = { ...state, cursor: Number(json.cursor) || state.cursor, lastSync: new Date().toISOString() }
       saveSync(state)
       if (!json.more && (await dbOutbox()).length === 0) return { status: 'ok', applied, baby, profiles }

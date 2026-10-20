@@ -22,12 +22,13 @@ type Props = {
   shared: boolean
   share: ReactNode // the sharing section (ShareSettings)
   notifications: ReactNode // NotificationSettings
+  account: ReactNode // AccountSettings
   onClose: () => void
   onExport: () => void
   onImport: (file: File) => void
 }
 
-export function BabySettings({ baby, onChange, babies, onProfile, onAddBaby, onRemoveBaby, quick, quickSuggestion, onQuick, milk, onMilk, shared, share, notifications, onClose, onExport, onImport }: Props) {
+export function BabySettings({ baby, onChange, babies, onProfile, onAddBaby, onRemoveBaby, quick, quickSuggestion, onQuick, milk, onMilk, shared, share, notifications, account, onClose, onExport, onImport }: Props) {
   const { t, unitLabel, mlToDisplay, displayToMl, formatAmount } = useFormat()
   const today = todayStr(new Date())
   const current = tierIndexFor(baby, today)
@@ -58,7 +59,10 @@ export function BabySettings({ baby, onChange, babies, onProfile, onAddBaby, onR
         <button className="settings-close" id="settings-close" onClick={onClose}>{t('close')}</button>
       </div>
 
-      <p className="settings-sub settings-sub-first">{babies.length > 1 && baby.name ? baby.name : t('babyTitle')}</p>
+      <p className="settings-sub settings-sub-first">{t('accountTitle')}</p>
+      {account}
+
+      <p className="settings-sub">{babies.length > 1 && baby.name ? baby.name : t('babyTitle')}</p>
       <label className="settings-row">
         <span>{t('babyName')}</span>
         <input

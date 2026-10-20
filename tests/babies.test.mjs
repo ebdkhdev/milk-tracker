@@ -6,7 +6,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { launch, serve, sleep } from './lib/browser.mjs'
 import { check, equal, suite } from './lib/assert.mjs'
-import { memoryStore } from './lib/memory-store.mjs'
+import { fakeAuth } from './lib/fakeauth.mjs'
+import { signUp } from './lib/family.mjs'
+import { memoryAccountStore, memoryStore } from './lib/memory-store.mjs'
 import { buildTag } from './lib/oldbuild.mjs'
 
 const idb = (store) => `new Promise(function(res){var r=indexedDB.open("suivi-lait-db");r.onsuccess=function(){var q=r.result.transaction(${JSON.stringify(store)}).objectStore(${JSON.stringify(store)}).getAll();q.onsuccess=function(){r.result.close();res(q.result)}}})`
@@ -14,12 +16,16 @@ const idb = (store) => `new Promise(function(res){var r=indexedDB.open("suivi-la
 export async function run(DIST) {
   suite('Several babies')
   const store = memoryStore()
+  const accounts = memoryAccountStore(store)
+  const auth = await fakeAuth(accounts)
+  store.account = { store: accounts, keys: auth.keys }
+  store.fakeAuth = auth
   const srv = await serve(DIST, 8765, store)
   const dir = mkdtempSync(join(tmpdir(), 'mt-babies-'))
   const profiles = { A: mkdtempSync(join(tmpdir(), 'mt-bb-a-')), B: mkdtempSync(join(tmpdir(), 'mt-bb-b-')) }
   let b = null
   const open = async (phone, url = srv.url) => {
-    b = await launch({ profile: phone ? profiles[phone] : undefined })
+    b = await launch({ profile: phone ? profiles[phone] : undefined, fakeAuth: true })
     await b.send('Page.navigate', { url })
     await b.waitFor(`!!document.querySelector("#quick-grid button")`, 15000)
     if (!(await b.ev('localStorage.getItem("suivi-lait-lang-v1")'))) { await b.ev('localStorage.setItem("suivi-lait-lang-v1","fr")'); await b.send('Page.reload'); await sleep(300); await b.waitFor(`!!document.querySelector("#quick-grid button")`, 15000) }
@@ -86,20 +92,18 @@ export async function run(DIST) {
     equal('restored on a new phone: Noé with his bottles', [await b.ev('document.getElementById("baby-select").selectedOptions[0].textContent'), await amounts()], ['Noé', '60 ml,90 ml'])
     await close()
 
-    // ---- two phones: A (new) creates the family, B (new) joins and sees both babies ----
+    // ---- A was sharing with a family code (before accounts): signing in keeps that family and sends the
+    // whole history; B, another device of the same account, gets both babies ----
+    const { code } = await (await fetch(srv.url + 'api/sync', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'create' }) })).json()
     await open('A')
-    await openSettings()
-    await b.click('#share-create')
-    await b.waitFor(`!!document.getElementById("share-code")`)
-    const code = await b.text('#share-code')
+    await b.ev(`localStorage.setItem("suivi-lait-sync-v1", JSON.stringify({ code: ${JSON.stringify(code)}, cursor: 0, lastSync: null }))`)
+    await b.send('Page.reload'); await sleep(300); await b.waitFor(`!!document.querySelector("#quick-grid button")`, 15000)
+    await signUp(b, 'parent@example.com', 'Parent')
     await syncAndWait()
     await close()
 
     await open('B')
-    await openSettings()
-    await b.setValue('#share-code-input', code)
-    await b.click('#share-join')
-    await b.waitFor(`!!document.getElementById("share-code")`)
+    await signUp(b, 'parent@example.com', '', true)
     await syncAndWait()
     await b.waitFor(`!!document.getElementById("baby-select")`)
     equal('B: both babies with their names', await b.ev('[...document.querySelectorAll("#baby-select option")].map(o=>o.textContent).join(",")'), 'Léa,Noé')

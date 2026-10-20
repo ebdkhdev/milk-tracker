@@ -1,20 +1,28 @@
-// Family sharing between two phones (two Chrome profiles, one after the other) through an in-memory server
-// running the real protocol code: merge, deletion, undo, conflict, offline queue, baby settings, leaving.
+// Sharing between two parents' accounts (two Chrome profiles, one after the other, fake Neon Auth) through an
+// in-memory server running the real protocol code: merge, deletion, undo, conflict, offline queue, baby
+// settings, leaving, erasing.
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { launch, serve, sleep } from './lib/browser.mjs'
 import { check, equal, suite } from './lib/assert.mjs'
-import { memoryStore } from './lib/memory-store.mjs'
+import { fakeAuth } from './lib/fakeauth.mjs'
+import { acceptInvite, invite, signUp } from './lib/family.mjs'
+import { memoryAccountStore, memoryStore } from './lib/memory-store.mjs'
 
 export async function run(DIST) {
   suite('Sharing between parents')
   const store = memoryStore()
+  const accounts = memoryAccountStore(store)
+  const auth = await fakeAuth(accounts)
+  store.account = { store: accounts, keys: auth.keys }
+  store.fakeAuth = auth
+  const uid = (email) => [...accounts.users.values()].find((u) => u.email === email).id
   const srv = await serve(DIST, 8765, store)
   const profiles = { A: mkdtempSync(join(tmpdir(), 'mt-phone-a-')), B: mkdtempSync(join(tmpdir(), 'mt-phone-b-')) }
   let b = null
   const open = async (phone) => {
-    b = await launch({ profile: profiles[phone] })
+    b = await launch({ profile: profiles[phone], fakeAuth: true })
     await b.goto(srv.url)
     if (!(await b.ev('localStorage.getItem("suivi-lait-lang-v1")'))) { await b.ev('localStorage.setItem("suivi-lait-lang-v1","fr")'); await b.reload() }
   }
@@ -40,36 +48,29 @@ export async function run(DIST) {
   const rowIdx = (amt) => b.ev(`[...document.querySelectorAll(".feed-item")].findIndex(e=>e.querySelector(".amt").textContent===${JSON.stringify(amt)})`)
 
   try {
-    // Phone A: two bottles, creates the family
+    // Phone A: an account (household created), then two bottles
     await open('A')
     await putOldDaily(OLD_DAY, true)
-    await openSettings()
-    await b.click('#share-create')
-    await b.waitFor(`!!document.getElementById("share-code")`)
-    const code = await b.text('#share-code')
+    await signUp(b, 'maman@example.com', 'Maman')
     await b.type('#device-name', 'Maman')
     await sleep(100)
     for (const i of [0, 1]) { await b.click('#quick-grid button', i); await sleep(150) }
-    check('family code shown (26 characters in groups of 4)', /^([A-Z2-9]{4}-){6}[A-Z2-9]{2}$/.test(code), code)
     check('first sync sends A\'s bottles', await syncAndWait())
-    equal('footer mentions sharing', await b.text('footer'), 'Données sur cet appareil, partagées avec ta famille (serveur en Europe).')
+    equal('footer says the account keeps the data', await b.text('footer'), 'Données enregistrées sur ton compte (serveur en Europe) et sur cet appareil.')
     await close()
 
-    // Phone B: its own bottle and vitamin D; a wrong code first, then the right one
+    // Phone B: its own account, bottle and vitamin D; then A invites it
     await open('B')
     await b.click('#quick-grid button', 2); await sleep(150)
     await b.click('#vitd-btn'); await sleep(150)
     await putOldDaily(OLD_DAY, false)
-    await openSettings()
-    await b.setValue('#share-code-input', 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF-GG')
-    await b.click('#share-join')
-    await b.waitFor(`!!document.getElementById("share-error")`)
-    equal('unknown code refused', await b.text('#share-error'), 'Code inconnu. Vérifie-le et réessaie.')
-    check('still not sharing', !(await b.exists('#share-code')))
-    await b.setValue('#share-code-input', code.toLowerCase().replace(/-/g, ' '))
-    await b.click('#share-join')
-    await b.waitFor(`!!document.getElementById("share-code")`)
-    check('joined with a pasted, re-cased code', true)
+    await signUp(b, 'papa@example.com', 'Papa')
+    await close()
+    await open('A')
+    await invite(b, 'papa@example.com')
+    await close()
+    await open('B')
+    await acceptInvite(b)
     await syncAndWait()
     equal('histories merged without duplicates', await amounts(), '120 ml,60 ml,90 ml')
     equal('who added each bottle', await b.ev(`[...document.querySelectorAll(".feed-item")].map(e=>e.querySelector(".amt").textContent+":"+((e.querySelector(".feed-by")||{}).textContent||"-")).sort().join(",")`), '120 ml:-,60 ml:par Maman,90 ml:par Maman')
@@ -130,46 +131,51 @@ export async function run(DIST) {
     await open('B')
     check('B: offline changes sent once back online', await syncAndWait())
     equal('B: latest edit wins (A\'s 130 over B\'s earlier 125), offline bottle kept', await amounts(), '130 ml,150 ml,90 ml')
-    await b.click('#share-leave'); await sleep(200)
-    check('leaving shows the create/join choice again', await b.exists('#share-create'))
+    const shared = accounts.members.get(uid('papa@example.com'))
+    await b.click('#leave-household')
+    await b.waitFor(`(document.querySelector("#toast .toast-text")||{}).textContent==="Tu as quitté la famille. Tes données restent sur ton compte."`, 8000)
+    await sleep(500)
+    check('leaving: B gets a household of its own', accounts.members.get(uid('papa@example.com')) !== shared && store.families.has(shared))
     equal('data kept after leaving', await amounts(), '130 ml,150 ml,90 ml')
-    equal('footer back to local', await b.text('footer'), 'Données stockées localement (IndexedDB) sur cet appareil.')
     await close()
 
     await open('A')
     await syncAndWait()
     equal('A: B\'s offline bottle arrived', await amounts(), '130 ml,150 ml,90 ml')
+    await invite(b, 'papa@example.com')
     await close()
 
     // B joins again, then A erases the family from the server
     await open('B')
-    await openSettings()
-    await b.setValue('#share-code-input', code)
-    await b.click('#share-join')
-    await b.waitFor(`!!document.getElementById("share-code")`)
+    await acceptInvite(b)
     await syncAndWait()
     await close()
 
     await open('A')
     await openSettings()
+    const family = accounts.members.get(uid('maman@example.com'))
     await b.click('#share-delete')
     check('erasing asks for confirmation', await b.exists('#share-confirm'))
     await b.click('#share-delete-no')
-    check('cancel keeps the family', (await b.exists('#share-code')) && store.families.size === 1)
+    check('cancel keeps the family', store.families.has(family))
     store.down = true
     await b.click('#share-delete'); await b.click('#share-delete-yes')
-    await b.waitFor(`!!document.getElementById("share-error")`)
-    equal('offline: nothing erased, error shown', [store.families.size, await b.text('#share-error')], [1, "Impossible d'effacer sans connexion. Réessaie plus tard."])
+    await b.waitFor(`!!document.getElementById("household-message")`)
+    equal('offline: nothing erased, error shown', [store.families.has(family), await b.text('#household-message')], [true, "Impossible d'effacer sans connexion. Réessaie plus tard."])
     store.down = false
-    await b.click('#share-delete-yes')
-    await b.waitFor(`!!document.getElementById("share-create")`)
-    equal('family and its records erased from the server', store.families.size, 0)
+    await b.click('#share-delete'); await b.click('#share-delete-yes')
+    await b.waitFor(`!${JSON.stringify([...store.families.keys()])}.length || true`)
+    for (let i = 0; i < 40 && store.families.has(family); i++) await sleep(100)
+    check('family and its records erased from the server', !store.families.has(family))
     equal('A keeps its data', await amounts(), '130 ml,150 ml,90 ml')
+    await syncAndWait()
+    check('A: still signed in, with a new household holding its data', !!accounts.members.get(uid('maman@example.com')) && accounts.members.get(uid('maman@example.com')) !== family)
     await close()
 
     await open('B')
-    await b.waitFor(`(document.querySelector("#toast .toast-text")||{}).textContent==="La famille a été supprimée : le partage est arrêté, les données restent sur ce téléphone."`, 8000)
-    check('B leaves on its own at the next sync', !(await b.ev('localStorage.getItem("suivi-lait-sync-v1")')))
+    await syncAndWait().catch(() => {}) // the first attempt finds no household and links a new one
+    await syncAndWait()
+    check('B: moved to a household of its own', !!accounts.members.get(uid('papa@example.com')) && accounts.members.get(uid('papa@example.com')) !== accounts.members.get(uid('maman@example.com')))
     equal('B keeps its data', await amounts(), '130 ml,150 ml,90 ml')
     await close()
   } finally {

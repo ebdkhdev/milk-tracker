@@ -1,11 +1,13 @@
 import { ClientOnly, createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { AccountSettings } from '#/components/AccountSettings'
 import { AddFeed } from '#/components/AddFeed'
 import { BackupReminder } from '#/components/BackupReminder'
 import { BabySettings } from '#/components/BabySettings'
 import { DayNav } from '#/components/DayNav'
 import { Diapers } from '#/components/Diapers'
 import { Growth } from '#/components/Growth'
+import { HouseholdSettings } from '#/components/HouseholdSettings'
 import type { GrowthInput } from '#/components/Growth'
 import { Sleep } from '#/components/Sleep'
 import { ongoingSleep, sleepMinutesOn, sleepsOn } from '#/lib/sleep'
@@ -22,6 +24,7 @@ import type { Tab } from '#/components/TabBar'
 import { Toast } from '#/components/Toast'
 import { TotalCard } from '#/components/TotalCard'
 import { VitaminDCard } from '#/components/VitaminDCard'
+import { useAccount } from '#/hooks/useAccount'
 import { useClock } from '#/hooks/useClock'
 import { useData } from '#/hooks/useData'
 import { useSharing } from '#/hooks/useSharing'
@@ -123,12 +126,21 @@ function App() {
     onRemoteBaby: saveBabyLocally,
     onRemoteProfiles: applyRemoteProfiles,
     // after create/join: the first baby's settings and every profile (see useSharing for the 0/1 trick)
-    shareBaby: (updatedAt) => {
-      queueBaby(baby, updatedAt)
-      profiles.forEach((p) => queueProfile(p, p.id === FIRST_BABY ? (p.name || p.sex ? 1 : 0) : p.updatedAt || 1))
-    },
+    shareBaby: () => shareBabySettings(),
     hasBirthDate: !!baby.birthDate,
+    onNoHousehold: () => { account.relink() },
   })
+  // joining a household (code or account): the babies' settings go too, with the 0/1 trick for the first
+  // baby (see useSharing) so joining never erases the household's birth date or names
+  const shareBabySettings = () => {
+    queueBaby(baby, baby.birthDate ? 1 : 0)
+    profiles.forEach((p) => queueProfile(p, p.id === FIRST_BABY ? (p.name || p.sex ? 1 : 0) : p.updatedAt || 1))
+  }
+  const account = useAccount({ ready, onLinked: () => { shareBabySettings(); sharing.refresh(); sharing.runSync() } })
+  // the name shown under bottles for the other parent: this phone's, else the account's first name
+  const byName = deviceName || (account.user && account.user.name) || ''
+  // invitations may have arrived since: refresh the household when the settings open
+  useEffect(() => { if (settingsOpen && account.user) account.refreshHousehold() }, [settingsOpen, account.user]) // eslint-disable-line react-hooks/exhaustive-deps
   // baby settings are shared with the family (quick amounts, milk type preference and reminder stay per phone)
   const setBaby = (b: Baby) => { saveBabyLocally(b); queueBaby(b, Date.now()) }
   const setProfile = (p: Profile) => {
@@ -258,7 +270,7 @@ function App() {
     const time = viewingToday ? new Date().toISOString() : timeOnDate(dateStr, customTime || '12:00')
     const feed: Feed = { id: newId(), date: dateStr, ml: Math.round(ml * 10) / 10, time }
     if (milk.track) feed.type = milk.last
-    if (deviceName && sharing.code) feed.by = deviceName
+    if (byName && sharing.active) feed.by = byName
     if (current.id !== FIRST_BABY) feed.babyId = current.id
     dbAdd(feed)
       .then(bump)
@@ -330,7 +342,7 @@ function App() {
   const addEvent = (e: { type: string; date: string; time: string; [k: string]: unknown }) => {
     const rec: EventRecord = { ...e, id: newId() }
     if (current.id !== FIRST_BABY) rec.babyId = current.id
-    if (deviceName && sharing.code) rec.by = deviceName
+    if (byName && sharing.active) rec.by = byName
     return dbPutEvent(rec).then(bump).catch((err) => console.error("Erreur d'enregistrement", err))
   }
   const removeEvent = (e: EventRecord, message: string) => {
@@ -441,11 +453,23 @@ function App() {
             onClose={() => setSettingsOpen(false)}
             onExport={exportData}
             onImport={importData}
-            shared={!!sharing.code}
+            shared={sharing.active}
+            account={
+              <AccountSettings
+                user={account.user}
+                onSignIn={account.signIn}
+                onSignUp={account.signUp}
+                onGoogle={account.signInGoogle}
+                onSignOut={() => { account.signOut().then(() => { sharing.refresh(); showToast(t('signedOut')) }) }}
+                onSendCode={account.sendCode}
+                onVerify={account.verifyEmail}
+                onReset={account.resetPassword}
+              />
+            }
             notifications={
               <NotificationSettings
                 push={push}
-                shared={!!sharing.code}
+                shared={sharing.active}
                 reminderOn={reminder.enabled}
                 reminderTime={reminder.time}
                 onEnable={() => enablePush(push, pushDevice).then((r) => { if (r === 'ok') { setPushState(loadPush()); showToast(t('notifOn')) } return r })}
@@ -454,21 +478,35 @@ function App() {
                 onChange={setPush}
               />
             }
-            share={
+            share={account.user ? (
+              <HouseholdSettings
+                household={account.household}
+                emailVerified={account.user.emailVerified}
+                status={sharing.status}
+                lastSync={sharing.lastSync}
+                name={deviceName}
+                onName={(n) => { saveDeviceName(n); setDeviceName(n) }}
+                onInvite={account.invite}
+                onCancel={account.cancelInvite}
+                onAccept={account.acceptInvite}
+                onDecline={account.declineInvite}
+                onLeave={() => { account.leaveHousehold().then(() => showToast(t('leftHousehold'))) }}
+                onErase={sharing.erase}
+                onSyncNow={sharing.runSync}
+              />
+            ) : (
               <ShareSettings
                 code={sharing.code}
                 status={sharing.status}
                 lastSync={sharing.lastSync}
                 name={deviceName}
                 onName={(n) => { saveDeviceName(n); setDeviceName(n) }}
-                onCreate={sharing.create}
-                onJoin={sharing.join}
                 onSendCode={sharing.sendCode}
                 onSyncNow={sharing.runSync}
                 onLeave={sharing.leave}
                 onDelete={sharing.erase}
               />
-            }
+            )}
           />
         ) : null}
         {/* one banner at a time: the backup reminder (data safety) wins over the install hint */}
@@ -539,7 +577,7 @@ function App() {
           onOpen={(ds) => { goToDate(parseDay(ds)); setTab('feeds') }}
           onReport={() => { setSettingsOpen(false); setReportOpen(true) }}
         /> : null}
-        <Footer shared={!!sharing.code} push={push.enabled} />
+        <Footer shared={!!sharing.code} account={sharing.account} push={push.enabled} />
         </>}
       </div>
       <TabBar tabs={['feeds', 'diapers', 'sleep', 'growth', 'stats']} tab={tab} onTab={setTab} />
@@ -559,7 +597,7 @@ function queueProfile(p: Profile, updatedAt: number) {
   dbQueue({ kind: 'profile', key: p.id, data, deleted: false, updatedAt }).catch((e) => console.error('Erreur partage', e))
 }
 
-function Footer({ shared, push }: { shared: boolean; push: boolean }) {
+function Footer({ shared, account, push }: { shared: boolean; account: boolean; push: boolean }) {
   const { t } = useFormat()
-  return <footer>{t(shared ? 'footerShared' : push ? 'footerPush' : 'footer')}</footer>
+  return <footer>{t(account ? 'footerAccount' : shared ? 'footerShared' : push ? 'footerPush' : 'footer')}</footer>
 }

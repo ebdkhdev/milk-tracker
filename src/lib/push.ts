@@ -2,6 +2,7 @@
 // server informed (language, time zone, choices, vitamin D given today, expected next bottle); the server
 // decides and sends. A random device token identifies this phone (the server keeps only its hash).
 import { isIos, isStandalone } from './platform'
+import { auth } from './auth'
 import { loadSync } from './sync'
 
 const PUSH_KEY = 'suivi-lait-push-v1'
@@ -48,10 +49,17 @@ export function deviceToken(): string | null {
 }
 
 async function api(body: object, token: string) {
-  // the family code proves membership (an empty header means "not in a family")
+  // signed in: the account gives the household; otherwise the family code proves membership (an empty
+  // header means "not in a family")
+  const s = loadSync()
+  const bearer = s.account ? await (await auth()).token() : null
   const res = await fetch(ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Device-Token': token, 'X-Family-Code': loadSync().code || '' },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Device-Token': token,
+      ...(bearer ? { Authorization: 'Bearer ' + bearer } : { 'X-Family-Code': s.code || '' }),
+    },
     body: JSON.stringify(body),
   })
   return { status: res.status, json: await res.json().catch(() => ({})) }

@@ -13,19 +13,20 @@ type Options = {
   onRemoteData: () => void // records changed by the other phone: reload
   onRemoteBaby: (b: Baby) => void // baby settings changed by the other phone (store locally, don't queue)
   onRemoteProfiles: (changes: Change[]) => void // babies' profiles changed by the other phone
+  onNoHousehold: () => void // signed in but the household is gone: link a new one
   shareBaby: (updatedAt: number) => void // queue this phone's baby settings
   hasBirthDate: boolean
 }
 
 // Family sharing state and actions (lib/sync.ts does the work). One sync at a time; local writes schedule
 // one 1.5 s later (several taps -> one request); also on start, foreground, online and every minute.
-export function useSharing({ ready, t, showToast, onRemoteData, onRemoteBaby, onRemoteProfiles, shareBaby, hasBirthDate }: Options) {
+export function useSharing({ ready, t, showToast, onRemoteData, onRemoteBaby, onRemoteProfiles, onNoHousehold, shareBaby, hasBirthDate }: Options) {
   const [sync, setSyncState] = useState(loadSync)
   const [status, setStatus] = useState<SyncStatus>('idle')
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   // runSync is stable; it reaches the latest callbacks and texts through this ref
-  const latest = useRef({ t, showToast, onRemoteData, onRemoteBaby, onRemoteProfiles })
-  latest.current = { t, showToast, onRemoteData, onRemoteBaby, onRemoteProfiles }
+  const latest = useRef({ t, showToast, onRemoteData, onRemoteBaby, onRemoteProfiles, onNoHousehold })
+  latest.current = { t, showToast, onRemoteData, onRemoteBaby, onRemoteProfiles, onNoHousehold }
 
   const stopped = useCallback((message: string) => {
     setSyncState(loadSync())
@@ -34,11 +35,13 @@ export function useSharing({ ready, t, showToast, onRemoteData, onRemoteBaby, on
   }, [])
 
   const runSync = useCallback(() => {
-    if (!loadSync().code) return
+    const state = loadSync()
+    if (!state.code && !state.account) return
     setStatus('syncing')
     syncNow().then((r) => {
       // deleted from the other phone: stop sharing, keep everything local
       if (r.status === 'gone') { leaveFamily().then(() => stopped(latest.current.t('familyGone'))); return }
+      if (r.status === 'nohousehold') { setStatus('idle'); latest.current.onNoHousehold(); return }
       setStatus(r.status)
       setSyncState(loadSync())
       if (r.baby && r.baby.data) latest.current.onRemoteBaby(sanitizeBaby(r.baby.data))
@@ -58,7 +61,7 @@ export function useSharing({ ready, t, showToast, onRemoteData, onRemoteBaby, on
   }, [scheduleSync])
 
   useEffect(() => {
-    if (!ready || !sync.code) return
+    if (!ready || !(sync.code || sync.account)) return
     runSync()
     const onVisible = () => { if (!document.hidden) runSync() }
     const id = setInterval(() => { if (!document.hidden) runSync() }, 60 * 1000)
@@ -69,7 +72,7 @@ export function useSharing({ ready, t, showToast, onRemoteData, onRemoteBaby, on
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('online', runSync)
     }
-  }, [ready, sync.code, runSync])
+  }, [ready, sync.code, sync.account, runSync])
 
   // After create/join: share the baby settings too. A phone without a birth date sends them with time 0
   // and a phone with one with time 1, so joining never erases the family's birth date; later edits use now.
@@ -83,6 +86,9 @@ export function useSharing({ ready, t, showToast, onRemoteData, onRemoteBaby, on
 
   return {
     code: sync.code,
+    account: sync.account,
+    active: !!sync.code || sync.account, // syncing with a household, by code or by account
+    refresh: () => setSyncState(loadSync()),
     lastSync: sync.lastSync,
     status,
     runSync,

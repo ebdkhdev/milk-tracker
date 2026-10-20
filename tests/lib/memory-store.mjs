@@ -109,7 +109,8 @@ export function memoryAccountStore(syncStore) {
   return {
     users, members, invites,
     async getUser(id) { return users.get(id) || null },
-    async memberFamily(id) { return members.get(id) ?? null },
+    // like the ON DELETE CASCADE of family_members: a deleted family has no members
+    async memberFamily(id) { const f = members.get(id); return f !== undefined && families.has(f) ? f : null },
     async addMember(id, familyId) { members.set(id, familyId) },
     async removeMember(id) { members.delete(id) },
     async familyMembers(familyId) { return [...members].filter(([, f]) => f === familyId).map(([id]) => ({ userId: id, email: users.get(id).email, name: users.get(id).name })) },

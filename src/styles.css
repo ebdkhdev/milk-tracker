@@ -493,7 +493,7 @@ input.switch:checked:active::before { inset-inline-start: 14px; }
 }
 @media (prefers-contrast: more) { input.switch { outline: 1px solid var(--separator); } }
 
-input[type="time"], input[type="date"], input[type="number"], input[type="text"] {
+input[type="time"], input[type="date"], input[type="number"], input[type="text"], input[type="email"], input[type="password"] {
   border: none;
   background: var(--fill);
   border-radius: 8px;
@@ -595,6 +595,18 @@ input[type="time"], input[type="date"], input[type="number"], input[type="text"]
 .share-status.warn { color: var(--warn); }
 .share-error { color: var(--warn); }
 .settings-reset.share-leave { color: var(--danger); }
+/* account: sign-in / sign-up form, Google, family members */
+.account-form form { display: flex; flex-direction: column; }
+.account-form .care-time, .sleep-add .care-time { padding-inline-start: 0; margin-bottom: 8px; }
+.account-form .care-time input { width: 13rem; max-width: 60%; }
+.account-tabs { display: flex; margin: 4px 0 12px; }
+.account-tabs button { flex: 1; white-space: normal; line-height: 1.2; padding-block: 6px; } /* labels wrap at large text sizes */
+.account-form .data-btn { width: 100%; margin-top: 4px; }
+.google-btn span { font-weight: 800; margin-inline-end: 6px; }
+.members { list-style: none; margin: 4px 0 0; padding: 0; }
+.members li { padding: 10px 0; border-block-start: 0.5px solid var(--separator); font-weight: 600; overflow-wrap: anywhere; }
+.member-email { font-weight: 400; color: var(--label-2); font-size: 0.882rem; }
+.pending-invite { min-height: 44px; }
 .share-confirm { background: var(--fill); border-radius: var(--radius); padding: 12px; margin-top: 8px; }
 .share-confirm p { margin: 0 0 10px; font-size: 0.882rem; }
 .data-btn.danger { background: var(--danger); color: var(--on-tint); } /* white on light red, black on dark-mode red */

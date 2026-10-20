@@ -36,6 +36,16 @@ export function neonKeySet() {
   return remote
 }
 
+// For /api/sync and /api/push: a request with a token is a signed-in phone, found by its household.
+// Returns { familyId } (undefined when there is no token: the family code is used), or { error, status }.
+export async function familyFromAccount(authorization, keySet, store) {
+  if (!authorization) return { familyId: undefined }
+  const userId = await verifyAccount(authorization, keySet)
+  if (!userId) return { status: 401, error: 'bad token' }
+  const familyId = await store.memberFamily(userId)
+  return familyId ? { familyId, userId } : { status: 409, error: 'no household', userId }
+}
+
 const newFamilyHash = () => createHash('sha256').update(randomBytes(32)).digest('hex') // no code: reached by membership only
 const lower = (s) => String(s || '').trim().toLowerCase()
 
