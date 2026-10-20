@@ -33,7 +33,7 @@
   "rewrites": [
     {
       "source": "/auth/:path*",
-      "destination": "https://ep-lingering-voice-ba5ez4w9.neonauth.c-8.eu-central-1.aws.neon.tech/neondb/auth/:path*"
+      "destination": "/api/auth-proxy?__p=:path*"
     }
   ]
 }
