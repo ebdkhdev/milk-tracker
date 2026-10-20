@@ -867,6 +867,9 @@ input[type="time"], input[type="date"], input[type="number"], input[type="text"]
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   .care-buttons button { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
+.care-actions { justify-content: center; margin-top: 14px; }
+.sleep-add { padding: 8px var(--gutter) 14px; margin-bottom: 24px; }
+.sleep-add .care-time { padding-inline-start: 0; margin-bottom: 8px; }
 .care-time { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; padding-inline-start: var(--gutter); color: var(--label-on-bg); }
 
 /* ---------- Tab bar (functional layer: glass), above the home indicator ---------- */

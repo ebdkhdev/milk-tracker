@@ -5,6 +5,8 @@ import { BackupReminder } from '#/components/BackupReminder'
 import { BabySettings } from '#/components/BabySettings'
 import { DayNav } from '#/components/DayNav'
 import { Diapers } from '#/components/Diapers'
+import { Sleep } from '#/components/Sleep'
+import { ongoingSleep, sleepMinutesOn, sleepsOn } from '#/lib/sleep'
 import type { DiaperKind } from '#/components/Diapers'
 import { FeedList } from '#/components/FeedList'
 import { Header } from '#/components/Header'
@@ -342,6 +344,31 @@ function App() {
     addEvent({ type: 'diaper', diaper: kind, time, date: dateStr })
   }
 
+  // sleep: one ongoing period at most per baby (start without end)
+  const ongoing = ongoingSleep(events)
+  const startSleep = () => { if (!ongoing) addEvent({ type: 'sleep', time: new Date().toISOString(), end: null, date: todayStr(new Date()) }) }
+  const stopSleep = (endHHMM?: string) => {
+    if (!ongoing) return
+    let end = new Date()
+    if (endHHMM) {
+      // a corrected wake-up: the first such time after the start
+      const [h, m] = endHHMM.split(':').map(Number)
+      end = new Date(Date.parse(ongoing.time))
+      end.setHours(h, m, 0, 0)
+      if (end.getTime() <= Date.parse(ongoing.time)) end.setDate(end.getDate() + 1)
+    }
+    dbPutEvent({ ...ongoing, end: end.toISOString() }).then(bump).catch((err) => console.error('Erreur sommeil', err))
+  }
+  // a past sleep on the viewed day; an end before the start means it ended the next morning
+  const addSleep = (fromHHMM: string, toHHMM: string): string | null => {
+    const start = new Date(timeOnDate(dateStr, fromHHMM))
+    const end = new Date(timeOnDate(dateStr, toHHMM))
+    if (end <= start) end.setDate(end.getDate() + 1)
+    if (end.getTime() - start.getTime() >= 24 * 3600e3 || end.getTime() > Date.now() + 60e3) return t('sleepInvalid')
+    addEvent({ type: 'sleep', time: start.toISOString(), end: end.toISOString(), date: dateStr })
+    return null
+  }
+
   // the first baby's vitamin D stays in "daily" (as before); the others' in "days"
   const toggleVitaminD = () => {
     const given = !(dayRecord && dayRecord.vitaminD)
@@ -477,6 +504,19 @@ function App() {
           onDelete={(e) => removeEvent(e, t('diaperDeleted'))}
         />
         </> : null}
+        {tab === 'sleep' ? <>
+        <DayNav viewDate={viewDate} onGo={goToDate} />
+        <Sleep
+          sleeps={sleepsOn(events, dateStr, now.getTime())}
+          ongoing={ongoing}
+          totalMin={sleepMinutesOn(events, dateStr, now.getTime())}
+          now={now}
+          onStart={startSleep}
+          onStop={stopSleep}
+          onAdd={addSleep}
+          onDelete={(e) => removeEvent(e, t('sleepDeleted'))}
+        />
+        </> : null}
         {tab === 'stats' ? <Stats
           rows={rows}
           period={period}
@@ -489,7 +529,7 @@ function App() {
         <Footer shared={!!sharing.code} push={push.enabled} />
         </>}
       </div>
-      <TabBar tabs={['feeds', 'diapers', 'stats']} tab={tab} onTab={setTab} />
+      <TabBar tabs={['feeds', 'diapers', 'sleep', 'stats']} tab={tab} onTab={setTab} />
       <Toast toast={toast} onDone={closeToast} />
     </FormatProvider>
   )

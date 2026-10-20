@@ -35,6 +35,7 @@ export function Report({ rows, feeds, baby, period, avgIntervalMin, onPeriod, on
   const shortDate = (ds: string) => parseDay(ds).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })
   const today = todayStr(new Date())
   const showDiapers = days.some((r) => r.diapers > 0)
+  const showSleep = days.some((r) => r.sleepMin > 0)
   const age = baby.birthDate ? formatAge(t, baby.birthDate, today) : null
   const notes = feeds
     .filter((f) => f.note && f.date >= first && f.date <= last)
@@ -50,6 +51,7 @@ export function Report({ rows, feeds, baby, period, avgIntervalMin, onPeriod, on
         [t('statVitd'), s.vitd + '/' + s.days],
         ...(s.breastShare !== null ? [[t('statBreast'), s.breastShare + ' %'] as [string, string]] : []),
         ...(s.diapersPerDay !== null ? [[t('statDiapers'), String(Math.round(s.diapersPerDay * 10) / 10)] as [string, string]] : []),
+        ...(s.sleepPerDay !== null ? [[t('statSleep'), formatHM(s.sleepPerDay) + ' ' + t('hourShort')] as [string, string]] : []),
       ]
     : []
 
@@ -122,6 +124,7 @@ export function Report({ rows, feeds, baby, period, avgIntervalMin, onPeriod, on
               <th scope="col">{t('colMin')}</th>
               <th scope="col">{t('colVitd')}</th>
               {showDiapers ? <th scope="col">{t('tab_diapers')}</th> : null}
+              {showSleep ? <th scope="col">{t('tab_sleep')}</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -136,6 +139,7 @@ export function Report({ rows, feeds, baby, period, avgIntervalMin, onPeriod, on
                 </td>
                 <td>{r.daily && r.daily.vitaminD ? '✓' : '—'}</td>
                 {showDiapers ? <td>{r.diapers || '—'}</td> : null}
+                {showSleep ? <td>{r.sleepMin ? formatHM(r.sleepMin) : '—'}</td> : null}
               </tr>
             ))}
           </tbody>
