@@ -2,19 +2,22 @@ import type { ReactNode } from 'react'
 import { minimumFor } from '#/lib/baby'
 import type { Baby } from '#/lib/baby'
 import { isToday, parseDay, todayStr } from '#/lib/dates'
-import type { Daily, Feed } from '#/lib/db'
+import type { Daily, EventRecord, Feed } from '#/lib/db'
 import { useFormat } from '#/lib/format'
 
 // Per-day aggregates for the selected period, most recent day first. minMl is that day's minimum (it depends on the baby's age).
 // breastMl / typedMl: volumes of the bottles whose milk type was recorded (untyped bottles are left out of the share).
-export type DayRow = { date: string; totalMl: number; count: number; daily: Daily | null; minMl: number; breastMl: number; typedMl: number }
+// diapers: diaper changes that day (0 when none were logged)
+export type DayRow = { date: string; totalMl: number; count: number; daily: Daily | null; minMl: number; breastMl: number; typedMl: number; diapers: number }
 
 // One row per day of the period, from `now` backwards.
-export function buildRows(feeds: Feed[], daily: Daily[], period: number, now: Date, baby: Baby): DayRow[] {
+export function buildRows(feeds: Feed[], daily: Daily[], period: number, now: Date, baby: Baby, events: EventRecord[] = []): DayRow[] {
   const byDate: Record<string, Feed[]> = {}
   feeds.forEach((e) => { (byDate[e.date] = byDate[e.date] || []).push(e) })
   const dailyByDate: Record<string, Daily> = {}
   daily.forEach((r) => { dailyByDate[r.date] = r })
+  const diapersByDate: Record<string, number> = {}
+  events.forEach((e) => { if (e.type === 'diaper') diapersByDate[e.date] = (diapersByDate[e.date] || 0) + 1 })
   const out: DayRow[] = []
   for (let i = 0; i < period; i++) {
     const d = new Date(now)
@@ -29,6 +32,7 @@ export function buildRows(feeds: Feed[], daily: Daily[], period: number, now: Da
       minMl: minimumFor(baby, ds),
       breastMl: list.reduce((s, e) => s + (e.type === 'breast' ? e.ml : 0), 0),
       typedMl: list.reduce((s, e) => s + (e.type ? e.ml : 0), 0),
+      diapers: diapersByDate[ds] || 0,
     })
   }
   return out
@@ -104,11 +108,13 @@ export type Summary = {
   bestDay: string | null
   shared: number | null
   breastShare: number | null // % of the typed volume, null when no bottle has a type
+  diapersPerDay: number | null // over the days with at least one diaper logged, null when none
 }
 export function summarize(rows: DayRow[]): Summary | null {
   const withData = rows.filter((r) => r.count > 0)
   const n = withData.length
   if (n === 0) return null
+  const diaperDays = rows.filter((r) => r.diapers > 0)
   let sumMl = 0, sumCount = 0, sumMin = 0, reached = 0, best = 0
   let bestDay: string | null = null
   withData.forEach((r) => {
@@ -133,6 +139,7 @@ export function summarize(rows: DayRow[]): Summary | null {
     bestDay,
     shared: sharedMin(rows),
     breastShare: typedMl > 0 ? Math.round((breastMl / typedMl) * 100) : null,
+    diapersPerDay: diaperDays.length ? diaperDays.reduce((s, r) => s + r.diapers, 0) / diaperDays.length : null,
   }
 }
 
@@ -169,6 +176,7 @@ function StatTiles({ rows, avgIntervalMin }: { rows: DayRow[]; avgIntervalMin: n
         <Tile value={mlToDisplay(s.best)} unit={u} label={t('statBest', { date: bestLabel })} />
         {avgIntervalMin !== null ? <Tile value={formatHM(avgIntervalMin)} unit={t('hourShort')} label={t('statInterval')} /> : null}
         {s.breastShare !== null ? <Tile value={s.breastShare} unit="%" label={t('statBreast')} /> : null}
+        {s.diapersPerDay !== null ? <Tile value={Math.round(s.diapersPerDay * 10) / 10} label={t('statDiapers')} /> : null}
       </div>
       <p className="stats-note" id="stats-note">{t('statsNote', { n, total: days })}</p>
     </>

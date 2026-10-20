@@ -4,6 +4,8 @@ import { AddFeed } from '#/components/AddFeed'
 import { BackupReminder } from '#/components/BackupReminder'
 import { BabySettings } from '#/components/BabySettings'
 import { DayNav } from '#/components/DayNav'
+import { Diapers } from '#/components/Diapers'
+import type { DiaperKind } from '#/components/Diapers'
 import { FeedList } from '#/components/FeedList'
 import { Header } from '#/components/Header'
 import { InstallBanner } from '#/components/InstallBanner'
@@ -24,8 +26,8 @@ import { buildBackup, parseBackup, shareOrDownload } from '#/lib/backup'
 import { FIRST_BABY, babyList, babyOf, loadBaby, loadCurrentBaby, loadProfiles, minimumFor, newBabyId, sanitizeProfile, saveBaby, saveCurrentBaby, saveProfiles } from '#/lib/baby'
 import type { Baby, Profile } from '#/lib/baby'
 import { isToday, nowHHMM, parseDay, timeOnDate, todayStr } from '#/lib/dates'
-import { dbAdd, dbDelete, dbDeleteDay, dbDeleteEvent, dbImport, dbPut, dbPutDaily, dbPutDay, dbQueue, newId } from '#/lib/db'
-import type { Change, Daily, Feed, MilkType } from '#/lib/db'
+import { dbAdd, dbDelete, dbDeleteDay, dbDeleteEvent, dbImport, dbPut, dbPutDaily, dbPutDay, dbPutEvent, dbQueue, newId } from '#/lib/db'
+import type { Change, Daily, EventRecord, Feed, MilkType } from '#/lib/db'
 import { lastFeedText, rhythmText } from '#/lib/feedText'
 import { FormatProvider, useFormat } from '#/lib/format'
 import { RTL_LANGS, loadLang, makeT, saveLang } from '#/lib/i18n'
@@ -89,7 +91,8 @@ function App() {
   )
   const entries = useMemo(() => feeds.filter((f) => f.date === dateStr).sort((a, b) => +new Date(b.time) - +new Date(a.time)), [feeds, dateStr])
   const dayRecord = (allDaily || []).find((d) => d.date === dateStr) || null
-  void allEvents
+  const events = useMemo(() => allEvents.filter((e) => babyOf(e) === current.id), [allEvents, current.id])
+  const dayEvents = (type: string) => events.filter((e) => e.type === type && e.date === dateStr).sort((a, b) => +new Date(b.time) - +new Date(a.time))
   const { toast, showToast, closeToast } = useToast()
   // after every local write: read the data again, and refresh the clock so "last bottle" is never ahead
   const bump = () => { reload(); refreshClock() }
@@ -229,7 +232,7 @@ function App() {
   }, [ready, allDaily, pushKey, push.enabled]) // eslint-disable-line react-hooks/exhaustive-deps
   const setPush = (p: PushState) => { savePush(p); setPushState(p) }
 
-  const rows = useMemo(() => buildRows(feeds, allDaily || [], period, now, current), [feeds, allDaily, period, now, current])
+  const rows = useMemo(() => buildRows(feeds, allDaily || [], period, now, current, events), [feeds, allDaily, period, now, current, events])
 
   // average interval over the stats period (from the start of its first day to now)
   const periodInterval = useMemo(() => {
@@ -316,6 +319,27 @@ function App() {
         })
       })
       .catch((e) => { console.error('Erreur import', e); showToast(t('importError')) })
+  }
+
+  // ---- diapers, sleep, growth: events of the selected baby ----
+  const eventTime = () => (viewingToday ? new Date().toISOString() : timeOnDate(dateStr, customTime || '12:00'))
+  const addEvent = (e: { type: string; date: string; time: string; [k: string]: unknown }) => {
+    const rec: EventRecord = { ...e, id: newId() }
+    if (current.id !== FIRST_BABY) rec.babyId = current.id
+    if (deviceName && sharing.code) rec.by = deviceName
+    return dbPutEvent(rec).then(bump).catch((err) => console.error("Erreur d'enregistrement", err))
+  }
+  const removeEvent = (e: EventRecord, message: string) => {
+    dbDeleteEvent(e.id)
+      .then(() => {
+        bump()
+        showToast(message, () => { dbPutEvent(e).then(bump).catch((err) => console.error("Erreur d'annulation", err)) })
+      })
+      .catch((err) => console.error('Erreur de suppression', err))
+  }
+  const addDiaper = (kind: DiaperKind) => {
+    const time = eventTime()
+    addEvent({ type: 'diaper', diaper: kind, time, date: dateStr })
   }
 
   // the first baby's vitamin D stays in "daily" (as before); the others' in "days"
@@ -442,6 +466,17 @@ function App() {
         <AddFeed past={!viewingToday} quick={quick} milk={milk} onMilkType={(type) => setMilk({ ...milk, last: type })} customTime={customTime} onCustomTime={setCustomTime} onAdd={addEntry} />
         <FeedList entries={entries} editingId={editingId} trackMilk={milk.track} onEdit={setEditingId} onSave={updateEntry} onDelete={removeEntry} />
         </> : null}
+        {tab === 'diapers' ? <>
+        <DayNav viewDate={viewDate} onGo={goToDate} />
+        <Diapers
+          events={dayEvents('diaper')}
+          past={!viewingToday}
+          customTime={customTime}
+          onCustomTime={setCustomTime}
+          onAdd={addDiaper}
+          onDelete={(e) => removeEvent(e, t('diaperDeleted'))}
+        />
+        </> : null}
         {tab === 'stats' ? <Stats
           rows={rows}
           period={period}
@@ -454,7 +489,7 @@ function App() {
         <Footer shared={!!sharing.code} push={push.enabled} />
         </>}
       </div>
-      <TabBar tabs={['feeds', 'stats']} tab={tab} onTab={setTab} />
+      <TabBar tabs={['feeds', 'diapers', 'stats']} tab={tab} onTab={setTab} />
       <Toast toast={toast} onDone={closeToast} />
     </FormatProvider>
   )
