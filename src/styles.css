@@ -490,7 +490,7 @@ input.switch:checked:active::before { inset-inline-start: 14px; }
 }
 @media (prefers-contrast: more) { input.switch { outline: 1px solid var(--separator); } }
 
-input[type="time"], input[type="date"], input[type="number"] {
+input[type="time"], input[type="date"], input[type="number"], input[type="text"] {
   border: none;
   background: var(--fill);
   border-radius: 8px;
@@ -579,6 +579,16 @@ input[type="time"], input[type="date"], input[type="number"] {
 .feed-edit .feed-note-input { flex: 1 1 100%; min-width: 0; }
 .feed-edit .milk-toggle { flex-shrink: 0; }
 .settings-switch { cursor: pointer; }
+.share-intro { margin: 0 0 10px; }
+.share-join { display: flex; gap: 8px; margin-top: 12px; }
+.share-join input { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.04em; }
+.share-join input::placeholder { font-family: var(--font); letter-spacing: 0; color: var(--label-2); }
+.share-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 1.06rem; font-weight: 600; letter-spacing: 0.06em; background: var(--fill); border-radius: var(--radius); padding: 12px; margin: 0 0 8px; text-align: center; user-select: all; -webkit-user-select: all; overflow-wrap: anywhere; }
+.share-status { font-size: 0.882rem; color: var(--label-2); margin: 8px 0; }
+.share-status.warn { color: var(--warn); }
+.share-error { color: var(--warn); }
+.settings-reset.share-leave { color: var(--danger); }
+.data-btn:disabled { opacity: 0.5; cursor: default; }
 .feed-item .actions { flex-shrink: 0; padding-inline-end: 4px; margin-inline-start: auto; }
 .feed-item .edit, .feed-item .del {
   border: none;

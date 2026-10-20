@@ -138,9 +138,24 @@ const TYPES = {
 
 // Like Vercel for this app: everything revalidates, and no conditional 304s (tests swap directories).
 // dir can be changed while running (upgrade test); stop() also simulates going offline.
-export async function serve(dir, port = 8765) {
+// With `api` (a store from memory-store.mjs), POST /api/sync runs the real protocol code from api/_core.mjs.
+export async function serve(dir, port = 8765, api = null) {
   const state = { dir }
-  const server = createServer((req, res) => {
+  const server = createServer(async (req, res) => {
+    if (req.url.startsWith('/api/')) {
+      // api.down: drop the connection, like a phone without network
+      if (api && api.down) { req.socket.destroy(); return }
+      if (!api || req.method !== 'POST' || req.url !== '/api/sync') { res.writeHead(404); res.end(); return }
+      let raw = ''
+      for await (const chunk of req) raw += chunk
+      let body = null
+      try { body = JSON.parse(raw) } catch (e) {}
+      const { handle } = await import('../../api/_core.mjs')
+      const r = await handle({ body, code: req.headers['x-family-code'] }, api)
+      res.writeHead(r.status, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(r.body))
+      return
+    }
     let path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '')
     let file = join(state.dir, path)
     if (path.endsWith('/') || !existsSync(file) || statSync(file).isDirectory()) {

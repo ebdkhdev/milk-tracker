@@ -36,13 +36,19 @@ export function parseBackup(text: string): Parsed | null {
       const feed: Feed = { id: typeof f.id === 'string' && f.id ? f.id : newId(), date: f.date, ml, time: f.time as string }
       if (f.type === 'formula' || f.type === 'breast') feed.type = f.type
       if (typeof f.note === 'string' && f.note.trim()) feed.note = f.note.trim().slice(0, NOTE_MAX)
+      if (Number(f.updatedAt) > 0) feed.updatedAt = Number(f.updatedAt)
       feeds.push(feed)
     } else skipped++
   }
   const daily: Daily[] = []
   for (const d of Array.isArray(data.daily) ? (data.daily as Array<Record<string, unknown>>) : []) {
     if (d && typeof d.date === 'string' && DAY_RE.test(d.date)) {
-      daily.push({ date: d.date, vitaminD: !!d.vitaminD, vitaminDTime: validTime(d.vitaminDTime) ? (d.vitaminDTime as string) : null })
+      daily.push({
+        date: d.date,
+        vitaminD: !!d.vitaminD,
+        vitaminDTime: validTime(d.vitaminDTime) ? (d.vitaminDTime as string) : null,
+        ...(Number(d.updatedAt) > 0 ? { updatedAt: Number(d.updatedAt) } : {}),
+      })
     } else skipped++
   }
   let baby: Baby | null = null

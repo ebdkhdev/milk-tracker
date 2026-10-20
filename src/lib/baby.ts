@@ -15,18 +15,17 @@ export type Baby = {
   tiersMl: number[] // one value per TIER_STARTS entry
 }
 
+// Settings from storage, a backup or the other phone: anything unexpected falls back to the defaults.
+export function sanitizeBaby(b: unknown): Baby {
+  const o = (b && typeof b === 'object' ? b : {}) as Record<string, unknown>
+  const tiers = Array.isArray(o.tiersMl) ? o.tiersMl : []
+  return {
+    birthDate: typeof o.birthDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.birthDate) ? o.birthDate : null,
+    tiersMl: DEFAULT_TIERS_ML.map((def, i) => (Number(tiers[i]) > 0 ? Number(tiers[i]) : def)),
+  }
+}
 export function loadBaby(): Baby {
-  try {
-    const b = JSON.parse(localStorage.getItem(BABY_KEY) || 'null')
-    if (b && typeof b === 'object') {
-      const tiers = Array.isArray(b.tiersMl) ? b.tiersMl : []
-      return {
-        birthDate: typeof b.birthDate === 'string' && b.birthDate ? b.birthDate : null,
-        tiersMl: DEFAULT_TIERS_ML.map((def, i) => (Number(tiers[i]) > 0 ? Number(tiers[i]) : def)),
-      }
-    }
-  } catch (e) {}
-  return { birthDate: null, tiersMl: DEFAULT_TIERS_ML.slice() }
+  try { return sanitizeBaby(JSON.parse(localStorage.getItem(BABY_KEY) || 'null')) } catch (e) { return sanitizeBaby(null) }
 }
 export function saveBaby(b: Baby) {
   try { localStorage.setItem(BABY_KEY, JSON.stringify(b)) } catch (e) {}

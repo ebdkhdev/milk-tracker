@@ -4,6 +4,7 @@ import { todayStr } from '#/lib/dates'
 import { useFormat } from '#/lib/format'
 import { DAILY_MIN_ML, MAX_FEED_ML, QUICK_AMOUNTS_ML } from '#/lib/settings'
 import type { MilkPrefs } from '#/lib/settings'
+import type { ReactNode } from 'react'
 
 type Props = {
   baby: Baby
@@ -13,12 +14,14 @@ type Props = {
   onQuick: (q: number[]) => void
   milk: MilkPrefs
   onMilk: (m: MilkPrefs) => void
+  shared: boolean
+  share: ReactNode // the sharing section (ShareSettings)
   onClose: () => void
   onExport: () => void
   onImport: (file: File) => void
 }
 
-export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, milk, onMilk, onClose, onExport, onImport }: Props) {
+export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, milk, onMilk, shared, share, onClose, onExport, onImport }: Props) {
   const { t, unitLabel, mlToDisplay, displayToMl, formatAmount } = useFormat()
   const today = todayStr(new Date())
   const current = tierIndexFor(baby, today)
@@ -147,6 +150,9 @@ export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, 
       </label>
       {milk.track ? <p className="settings-note">{t('milkNote')}</p> : null}
 
+      <p className="settings-sub">{t('shareTitle')}</p>
+      {share}
+
       <p className="settings-sub">{t('dataTitle')}</p>
       <div className="data-row">
         <button className="data-btn" id="export-btn" onClick={onExport}>{t('exportBtn')}</button>
@@ -166,7 +172,7 @@ export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, 
           />
         </label>
       </div>
-      <p className="settings-note">{t('dataNote')}</p>
+      <p className="settings-note">{t(shared ? 'dataNoteShared' : 'dataNote')}</p>
     </section>
   )
 }

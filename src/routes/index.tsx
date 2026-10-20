@@ -15,12 +15,15 @@ import type { ToastMsg } from '#/components/Toast'
 import { TotalCard } from '#/components/TotalCard'
 import { VitaminDCard } from '#/components/VitaminDCard'
 import { buildBackup, parseBackup, shareOrDownload } from '#/lib/backup'
+import { createFamily, formatCode, initSync, joinFamily, leaveFamily, loadSync, syncNow } from '#/lib/sync'
+import type { SyncStatus } from '#/lib/sync'
+import { ShareSettings } from '#/components/ShareSettings'
 import { averageInterval, feedingRhythm } from '#/lib/rhythm'
-import { loadBaby, minimumFor, saveBaby } from '#/lib/baby'
+import { loadBaby, minimumFor, sanitizeBaby, saveBaby } from '#/lib/baby'
 import type { Baby } from '#/lib/baby'
 import { formatTime, isToday, nowHHMM, parseDay, timeOnDate, todayStr } from '#/lib/dates'
 import {
-  dbAdd, dbDelete, dbGetAll, dbGetAllDaily, dbGetByDate, dbGetDaily, dbImport, dbPut, dbPutDaily,
+  dbAdd, dbDelete, dbGetAll, dbGetAllDaily, dbGetByDate, dbGetDaily, dbImport, dbPut, dbPutDaily, dbQueue,
   migrateFromLocalStorage, newId,
 } from '#/lib/db'
 import type { Daily, Feed, MilkType } from '#/lib/db'
@@ -69,6 +72,9 @@ function App() {
   const [allFeeds, setAllFeeds] = useState<Feed[]>([])
   const [allDaily, setAllDaily] = useState<Daily[] | null>(null)
   const [toast, setToast] = useState<ToastMsg | null>(null)
+  const [sync, setSyncState] = useState(loadSync)
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle')
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const dateStr = todayStr(viewDate)
@@ -85,7 +91,24 @@ function App() {
   }
   useEffect(() => () => clearTimeout(toastTimer.current), [])
 
+  // Sharing: one sync at a time; local writes schedule one shortly after (several taps -> one request).
+  const runSync = useCallback(() => {
+    if (!loadSync().code) return
+    setSyncStatus('syncing')
+    syncNow().then((r) => {
+      setSyncStatus(r.status)
+      setSyncState(loadSync())
+      if (r.baby && r.baby.data) { const b = sanitizeBaby(r.baby.data); saveBaby(b); setBabyState(b) }
+      if (r.applied) setRev((v) => v + 1)
+    })
+  }, [])
+  const scheduleSync = useCallback(() => {
+    clearTimeout(syncTimer.current)
+    syncTimer.current = setTimeout(runSync, 1500)
+  }, [runSync])
+
   useEffect(() => {
+    initSync(scheduleSync)
     migrateFromLocalStorage().then(() => setReady(true))
     // ask the browser not to evict our data under storage pressure (best effort, no prompt on most browsers)
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {})
@@ -122,6 +145,21 @@ function App() {
       .then(([feeds, daily]) => { setAllFeeds(feeds); setAllDaily(daily) })
       .catch((e) => console.error('Erreur historique', e))
   }, [ready, rev])
+
+  // Sync on start, when the app comes back to the foreground or online, and every minute while visible.
+  useEffect(() => {
+    if (!ready || !sync.code) return
+    runSync()
+    const onVisible = () => { if (!document.hidden) runSync() }
+    const id = setInterval(() => { if (!document.hidden) runSync() }, 60 * 1000)
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', runSync)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', runSync)
+    }
+  }, [ready, sync.code, runSync])
 
   // Clock for the reminder: every minute and whenever the app comes back to the foreground.
   useEffect(() => {
@@ -238,7 +276,7 @@ function App() {
         if (!parsed) { showToast(t('importError')); return }
         return dbImport(parsed.feeds, parsed.daily).then(() => {
           // a new phone (no birth date yet) takes the file's baby settings; otherwise this phone's settings win
-          if (parsed.baby && !baby.birthDate) { saveBaby(parsed.baby); setBabyState(parsed.baby) }
+          if (parsed.baby && !baby.birthDate) setBaby(parsed.baby)
           if (parsed.quick && isDefaultQuick(quick)) { saveQuick(parsed.quick); setQuickState(parsed.quick) }
           bump()
           showToast(t('imported', { n: parsed.feeds.length }) + (parsed.skipped ? t('importSkipped', { n: parsed.skipped }) : ''))
@@ -258,6 +296,27 @@ function App() {
   }
 
   const setMilk = (m: MilkPrefs) => { saveMilk(m); setMilkState(m) }
+  // baby settings are shared with the family (quick amounts, milk type preference and reminder stay per phone)
+  const setBaby = (b: Baby, updatedAt = Date.now()) => {
+    saveBaby(b)
+    setBabyState(b)
+    dbQueue({ kind: 'baby', key: 'baby', data: b, deleted: false, updatedAt }).catch((e) => console.error('Erreur partage', e))
+  }
+  // After create/join: share the baby settings too. A phone without a birth date sends them with time 0
+  // and a phone with one with time 1, so joining never erases the family's birth date; later edits use now.
+  const afterJoin = (message: string) => () => {
+    setSyncState(loadSync())
+    setBaby(baby, baby.birthDate ? 1 : 0)
+    showToast(message)
+    runSync()
+    return null
+  }
+  const sendCode = () => {
+    if (!sync.code) return
+    const text = t('inviteText', { code: formatCode(sync.code) })
+    if (navigator.share) navigator.share({ text }).catch(() => {})
+    else if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast(t('copied'))).catch(() => {})
+  }
   const setBackup = (b: BackupState) => { saveBackupState(b); setBackupState(b) }
   const backupReminder = ready && allDaily ? backupDue(backup, allFeeds, now) : null
 
@@ -294,7 +353,7 @@ function App() {
         {settingsOpen ? (
           <BabySettings
             baby={baby}
-            onChange={(b) => { saveBaby(b); setBabyState(b) }}
+            onChange={setBaby}
             quick={quick}
             quickSuggestion={suggestQuick(allFeeds, now)}
             onQuick={(q) => { saveQuick(q); setQuickState(q) }}
@@ -303,6 +362,19 @@ function App() {
             onClose={() => setSettingsOpen(false)}
             onExport={exportData}
             onImport={importData}
+            shared={!!sync.code}
+            share={
+              <ShareSettings
+                code={sync.code}
+                status={syncStatus}
+                lastSync={sync.lastSync}
+                onCreate={() => createFamily().then(afterJoin(t('created')), () => t('createError'))}
+                onJoin={(code) => joinFamily(code).then((r) => (r === 'ok' ? afterJoin(t('joined'))() : t(r === 'unknown' ? 'joinUnknown' : 'joinOffline')))}
+                onSendCode={sendCode}
+                onSyncNow={runSync}
+                onLeave={() => { leaveFamily().then(() => { setSyncState(loadSync()); setSyncStatus('idle'); showToast(t('left')) }) }}
+              />
+            }
           />
         ) : null}
         {/* one banner at a time: the backup reminder (data safety) wins over the install hint */}
@@ -344,7 +416,7 @@ function App() {
           onOpen={(ds) => { goToDate(parseDay(ds)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
           onReport={() => { setSettingsOpen(false); setReportOpen(true) }}
         />
-        <Footer />
+        <Footer shared={!!sync.code} />
         </>}
       </div>
       <Toast toast={toast} onDone={() => { clearTimeout(toastTimer.current); setToast(null) }} />
@@ -381,7 +453,7 @@ function rhythmText(feeds: Feed[], now: Date, t: T): string | null {
   return r.next.getTime() < now.getTime() ? t('rhythmLate', vars) : t('rhythm', vars)
 }
 
-function Footer() {
+function Footer({ shared }: { shared: boolean }) {
   const { t } = useFormat()
-  return <footer>{t('footer')}</footer>
+  return <footer>{t(shared ? 'footerShared' : 'footer')}</footer>
 }

@@ -17,6 +17,8 @@ self.addEventListener("activate", (e) => {
 // Network-first pour la page (mises à jour), cache-first pour le reste (polices, icônes)
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
+  // the sharing API is never cached (it is POST-only today; this keeps it so if a GET is ever added)
+  if (new URL(e.request.url).pathname.startsWith("/api/")) return;
   if (e.request.mode === "navigate") {
     e.respondWith(
       fetch(e.request).then((r) => {
