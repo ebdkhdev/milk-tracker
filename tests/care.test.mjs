@@ -77,6 +77,11 @@ export async function run(DIST) {
     await b.ev(`new Promise(function(res){var r=indexedDB.open("suivi-lait-db");r.onsuccess=function(){var tx=r.result.transaction("events","readwrite");var t=new Date(Date.now()-13*3600e3);tx.objectStore("events").put({id:"long-1",type:"sleep",time:t.toISOString(),end:null,date:t.toISOString().slice(0,10),updatedAt:1});tx.oncomplete=function(){r.result.close();res(1)}}})`)
     await b.reload(); await b.tab('sleep')
     check('long sleep: asks about the wake-up', await b.exists('#sleep-long'))
+    // a wake-up in the future (13 h after a start 13 h ago would be "now + 0"; take start + 13 h 30) is refused
+    const future = await b.ev(`(function(){var d=new Date(Date.now()+30*60e3);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")})()`)
+    await b.setValue('#sleep-wake', future)
+    await b.click('#sleep-fix'); await sleep(150)
+    check('a wake-up in the future is refused, the sleep keeps running', (await b.exists('#sleep-wake-error')) && (await b.exists('#sleep-running')))
     const wake = await b.ev(`(function(){var d=new Date(Date.now()-11*3600e3);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")})()`)
     await b.setValue('#sleep-wake', wake)
     await b.click('#sleep-fix'); await sleep(200)

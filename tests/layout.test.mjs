@@ -53,7 +53,7 @@ export async function run(DIST) {
     }
     await b.ev(`document.documentElement.style.fontSize=""`)
 
-    for (const lang of ['fr', 'ar']) {
+    for (const lang of ['fr', 'en', 'ar']) {
       await b.setValue('#lang-select', lang)
       for (const w of [320, 360]) {
         await b.viewport(w, 700); await sleep(200)
@@ -61,6 +61,7 @@ export async function run(DIST) {
         const bar = await b.ev(`(function(){var h=document.querySelector("header"),c=document.querySelector(".header-controls"),n=document.querySelector(".brand");
           return {oneLine: c.getBoundingClientRect().height<=48, brandFits: n.scrollWidth<=n.clientWidth+1}})()`)
         equal(`${lang} ${w}px: top bar on one line, name not cut`, bar, { oneLine: true, brandFits: true })
+        equal(`${lang} ${w}px: no tab label cut`, await b.ev(`[...document.querySelectorAll(".tab-label")].filter(function(e){return e.scrollWidth>e.clientWidth+1}).map(function(e){return e.textContent})`), [])
       }
     }
     // a much wider font (some Android / Linux system fonts): the name is hidden rather than cut

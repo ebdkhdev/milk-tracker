@@ -11,7 +11,7 @@ type Props = {
   totalMin: number // slept within the viewed day
   now: Date
   onStart: () => void
-  onStop: (endHHMM?: string) => void // now, or a corrected wake-up time
+  onStop: (endHHMM?: string) => string | null // now, or a corrected wake-up time; error text if refused
   onAdd: (fromHHMM: string, toHHMM: string) => string | null // error text, or null
   onDelete: (e: EventRecord) => void
 }
@@ -23,6 +23,7 @@ export function Sleep({ sleeps, ongoing, totalMin, now, onStart, onStop, onAdd, 
   const [to, setTo] = useState('')
   const [wake, setWake] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [wakeError, setWakeError] = useState<string | null>(null)
   const nowMs = now.getTime()
   const running = ongoing ? sleepDurationMin(ongoing, nowMs) : 0
   return (
@@ -42,7 +43,8 @@ export function Sleep({ sleeps, ongoing, totalMin, now, onStart, onStop, onAdd, 
                   <span>{t('sleepWakeAt')}</span>
                   <input type="time" id="sleep-wake" value={wake} onChange={(e) => setWake(e.target.value)} />
                 </label>
-                <button className="data-btn" id="sleep-fix" disabled={!wake} onClick={() => onStop(wake)}>{t('sleepSaveWake')}</button>
+                <button className="data-btn" id="sleep-fix" disabled={!wake} onClick={() => setWakeError(onStop(wake))}>{t('sleepSaveWake')}</button>
+                {wakeError ? <p className="settings-note share-error" id="sleep-wake-error" role="alert">{wakeError}</p> : null}
               </div>
             ) : null}
           </>

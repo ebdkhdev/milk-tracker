@@ -16,6 +16,11 @@ export async function run(DIST) {
     await b.click('#quick-grid button', 3)
     await b.tab('growth')
     check('without birth date and sex: explanation instead of curves', (await b.exists('#growth-no-curves')) && !(await b.exists('#growth-chart')))
+    await b.send('Emulation.setFocusEmulationEnabled', { enabled: true }) // headless windows are not focused
+    await b.ev('document.getElementById("growth-in-weight").focus()'); await sleep(100)
+    equal('tab bar hidden while typing', await b.ev('getComputedStyle(document.querySelector(".tabbar")).display'), 'none')
+    await b.ev('document.getElementById("growth-in-weight").blur()'); await sleep(100)
+    equal('and back after', await b.ev('getComputedStyle(document.querySelector(".tabbar")).display'), 'flex')
     await b.setValue('#growth-in-weight', '3500')
     await b.click('#growth-add')
     equal('grams typed as kilograms are refused', await b.text('#growth-error'), 'Poids semble improbable : vérifie l’unité (entre 0.5 et 30).'.replace('’', "'"))

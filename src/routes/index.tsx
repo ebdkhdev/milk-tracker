@@ -349,8 +349,9 @@ function App() {
   // sleep: one ongoing period at most per baby (start without end)
   const ongoing = ongoingSleep(events)
   const startSleep = () => { if (!ongoing) addEvent({ type: 'sleep', time: new Date().toISOString(), end: null, date: todayStr(new Date()) }) }
-  const stopSleep = (endHHMM?: string) => {
-    if (!ongoing) return
+  // returns an error text when the corrected wake-up would be in the future
+  const stopSleep = (endHHMM?: string): string | null => {
+    if (!ongoing) return null
     let end = new Date()
     if (endHHMM) {
       // a corrected wake-up: the first such time after the start
@@ -358,8 +359,10 @@ function App() {
       end = new Date(Date.parse(ongoing.time))
       end.setHours(h, m, 0, 0)
       if (end.getTime() <= Date.parse(ongoing.time)) end.setDate(end.getDate() + 1)
+      if (end.getTime() > Date.now() + 60e3) return t('sleepWakeFuture')
     }
     dbPutEvent({ ...ongoing, end: end.toISOString() }).then(bump).catch((err) => console.error('Erreur sommeil', err))
+    return null
   }
   // a past sleep on the viewed day; an end before the start means it ended the next morning
   const addSleep = (fromHHMM: string, toHHMM: string): string | null => {
