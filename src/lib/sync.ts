@@ -3,6 +3,7 @@
 // cursor. Conflicts: last write wins (updatedAt), decided by the server and re-checked in dbApplyRemote.
 import { dbAckOutbox, dbApplyRemote, dbClearOutbox, dbOutbox, dbQueueAll, onQueued, setQueueing } from './db'
 import type { Change } from './db'
+import { deviceToken } from './push'
 
 const SYNC_KEY = 'suivi-lait-sync-v1'
 const ENDPOINT = '/api/sync'
@@ -39,7 +40,11 @@ export function initSync(onLocalChange: () => void) {
 async function post(body: object, code?: string) {
   const res = await fetch(ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(code ? { 'X-Family-Code': code } : {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(code ? { 'X-Family-Code': code } : {}),
+      ...(deviceToken() ? { 'X-Device-Token': deviceToken()! } : {}),
+    },
     body: JSON.stringify(body),
   })
   const json = await res.json().catch(() => ({}))

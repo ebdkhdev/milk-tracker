@@ -30,6 +30,8 @@ export function findChrome() {
 export async function launch({ profile } = {}) {
   const chrome = findChrome()
   if (!chrome) throw new Error('Chrome not found: set CHROME_PATH')
+  // a Chrome left over by an interrupted run would answer instead, with its old profile
+  try { await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/version`); throw new Error(`port ${DEBUG_PORT} busy: a test Chrome from an interrupted run is still open (pkill -f remote-debugging-port=${DEBUG_PORT})`) } catch (e) { if (String(e.message).startsWith('port')) throw e }
   const dir = profile || mkdtempSync(join(tmpdir(), 'milk-tracker-test-'))
   // CI runners (Ubuntu 24.04) block the namespaces Chrome's sandbox needs
   const extra = process.env.CI ? ['--no-sandbox'] : []
@@ -147,15 +149,27 @@ export async function serve(dir, port = 8765, api = null) {
     if (req.url.startsWith('/api/')) {
       // api.down: drop the connection, like a phone without network
       if (api && api.down) { req.socket.destroy(); return }
-      if (!api || req.method !== 'POST' || req.url !== '/api/sync') { res.writeHead(404); res.end(); return }
+      const isPush = req.url === '/api/push' && api && api.push
+      if (!api || req.method !== 'POST' || (req.url !== '/api/sync' && !isPush)) { res.writeHead(404); res.end(); return }
       let raw = ''
       for await (const chunk of req) raw += chunk
       let body = null
       try { body = JSON.parse(raw) } catch (e) {}
+      const send = (r) => { res.writeHead(r.status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(r.body)) }
+      const push = await import('../../api/_push.mjs')
+      if (isPush) {
+        // api.push = { store, scheduler, sender, publicKey } (memoryPushStore + fakes)
+        send(await push.handlePush({ body, token: req.headers['x-device-token'], familyCode: req.headers['x-family-code'] }, api.push))
+        return
+      }
       const { handle } = await import('../../api/_core.mjs')
       const r = await handle({ body, code: req.headers['x-family-code'], ip: req.socket.remoteAddress }, api)
-      res.writeHead(r.status, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify(r.body))
+      send(r)
+      // like api/sync.mjs: tell the other parent about new bottles
+      if (api.push && r.inserted && r.inserted.length) {
+        const token = req.headers['x-device-token']
+        await push.notifyPartners({ familyId: r.familyId, inserted: r.inserted, senderHash: token ? push.tokenHash(token) : null }, api.push)
+      }
       return
     }
     let path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '')

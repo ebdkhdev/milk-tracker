@@ -16,12 +16,13 @@ type Props = {
   onMilk: (m: MilkPrefs) => void
   shared: boolean
   share: ReactNode // the sharing section (ShareSettings)
+  notifications: ReactNode // NotificationSettings
   onClose: () => void
   onExport: () => void
   onImport: (file: File) => void
 }
 
-export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, milk, onMilk, shared, share, onClose, onExport, onImport }: Props) {
+export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, milk, onMilk, shared, share, notifications, onClose, onExport, onImport }: Props) {
   const { t, unitLabel, mlToDisplay, displayToMl, formatAmount } = useFormat()
   const today = todayStr(new Date())
   const current = tierIndexFor(baby, today)
@@ -152,6 +153,9 @@ export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, 
 
       <p className="settings-sub">{t('shareTitle')}</p>
       {share}
+
+      <p className="settings-sub">{t('notifTitle')}</p>
+      {notifications}
 
       <p className="settings-sub">{t('dataTitle')}</p>
       <div className="data-row">

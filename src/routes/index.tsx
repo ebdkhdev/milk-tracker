@@ -7,6 +7,7 @@ import { DayNav } from '#/components/DayNav'
 import { FeedList } from '#/components/FeedList'
 import { Header } from '#/components/Header'
 import { InstallBanner } from '#/components/InstallBanner'
+import { NotificationSettings } from '#/components/NotificationSettings'
 import { Report } from '#/components/Report'
 import { ShareSettings } from '#/components/ShareSettings'
 import { Stats, buildRows } from '#/components/Stats'
@@ -28,7 +29,9 @@ import { FormatProvider, useFormat } from '#/lib/format'
 import { RTL_LANGS, loadLang, makeT, saveLang } from '#/lib/i18n'
 import type { Lang, Unit } from '#/lib/i18n'
 import { notificationsAvailable, reminderIsDue, showReminderNotification } from '#/lib/reminder'
-import { averageInterval } from '#/lib/rhythm'
+import { disablePush, enablePush, loadPush, refreshPush, savePush, updatePush } from '#/lib/push'
+import type { PushDevice, PushState } from '#/lib/push'
+import { averageInterval, feedingRhythm } from '#/lib/rhythm'
 import {
   BACKUP_SNOOZE_DAYS, backupDue, isDefaultQuick, loadBackupState, loadDeviceName, loadMilk, loadQuick, loadReminder,
   loadUnit, saveBackupState, saveDeviceName, saveMilk, saveQuick, saveReminder, saveUnit, suggestQuick,
@@ -57,6 +60,7 @@ function App() {
   const [milk, setMilkState] = useState<MilkPrefs>(loadMilk)
   const [backup, setBackupState] = useState<BackupState>(loadBackupState)
   const [deviceName, setDeviceName] = useState(loadDeviceName)
+  const [push, setPushState] = useState<PushState>(loadPush)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const reportClosed = useRef(false)
@@ -113,14 +117,36 @@ function App() {
   const todayGiven = allDaily ? !!allDaily.find((r) => r.date === today && r.vitaminD) : null
   const due = reminderIsDue(reminder, now) && todayGiven === false
 
-  // At most one notification per day, only while the app is open.
+  // At most one notification per day, only while the app is open (and not when push already covers it).
   useEffect(() => {
     if (!due || reminder.lastNotified === today) return
     const next = { ...reminder, lastNotified: today }
     saveReminder(next)
     setReminderState(next)
-    showReminderNotification(t)
-  }, [due, today, reminder, t])
+    if (!push.enabled) showReminderNotification(t)
+  }, [due, today, reminder, t, push.enabled])
+
+  // Push: what the server needs to schedule this phone's notifications. Sent on start (with the
+  // subscription, which iOS may have replaced) and whenever something it depends on changes.
+  const rhythm = useMemo(() => feedingRhythm(allFeeds, now), [allFeeds, now])
+  const lastFeedAt = useMemo(() => allFeeds.reduce((m, f) => Math.max(m, Date.parse(f.time) <= now.getTime() + 60e3 ? Date.parse(f.time) : 0), 0), [allFeeds, now])
+  const pushDevice: PushDevice = {
+    lang, unit, tz: Intl.DateTimeFormat().resolvedOptions().timeZone, name: deviceName,
+    prefs: { vitd: reminder.enabled, vitdTime: reminder.time, nextFeed: push.nextFeed, partner: push.partner },
+    vitdGivenDate: todayGiven ? today : null,
+    ...(rhythm && lastFeedAt ? { lastFeedAt, nextFeedAt: rhythm.next.getTime() } : {}),
+  }
+  const pushKey = JSON.stringify([pushDevice, sharing.code])
+  const pushStarted = useRef(false)
+  useEffect(() => {
+    if (!ready || !allDaily || !push.enabled) return
+    const first = !pushStarted.current
+    pushStarted.current = true
+    const id = setTimeout(() => (first ? refreshPush(push, pushDevice) : updatePush(push, pushDevice)), first ? 0 : 2000)
+    return () => clearTimeout(id)
+    // pushKey covers every field of pushDevice and the family membership
+  }, [ready, allDaily, pushKey, push.enabled]) // eslint-disable-line react-hooks/exhaustive-deps
+  const setPush = (p: PushState) => { savePush(p); setPushState(p) }
 
   const rows = useMemo(() => buildRows(allFeeds, allDaily || [], period, now, baby), [allFeeds, allDaily, period, now, baby])
 
@@ -260,6 +286,17 @@ function App() {
             onExport={exportData}
             onImport={importData}
             shared={!!sharing.code}
+            notifications={
+              <NotificationSettings
+                push={push}
+                shared={!!sharing.code}
+                reminderOn={reminder.enabled}
+                reminderTime={reminder.time}
+                onEnable={() => enablePush(push, pushDevice).then((r) => { if (r === 'ok') { setPushState(loadPush()); showToast(t('notifOn')) } return r })}
+                onDisable={() => { disablePush(push).then(() => setPushState(loadPush())) }}
+                onChange={setPush}
+              />
+            }
             share={
               <ShareSettings
                 code={sharing.code}

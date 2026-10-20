@@ -47,7 +47,8 @@ export function memoryPushStore() {
   const families = new Map()
   let nextId = 0
   const byId = (id) => [...subs.values()].find((s) => s.id === id) || null
-  const fam = (id) => [...families.values()].find((f) => f.id === id)
+  // a family the test did not declare (created in the browser) starts empty
+  const fam = (id) => [...families.values()].find((f) => f.id === id) || families.set('id:' + id, { id, vitdGiven: new Set(), lastFeedAt: 0, next: null }).get('id:' + id)
   const defaults = { familyId: null, lang: 'fr', unit: 'ml', tz: 'Europe/Paris', name: null, vitd: false, vitdTime: '08:00', nextFeed: false, partner: false, vitdGivenDate: null, next: null }
   return {
     subs,

@@ -41,6 +41,16 @@ self.addEventListener("fetch", (e) => {
 });
 
 // Clicking the vitamin D reminder notification focuses the app (or opens it).
+// Push from the server (reminders, the other parent's bottles). Always shown: iOS revokes subscriptions
+// that receive pushes without a notification, so any decision is taken by the server, never here.
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) {}
+  e.waitUntil(self.registration.showNotification(d.title || "Milk Tracker", {
+    body: d.body || "", tag: d.tag, icon: "/icon-192.png", badge: "/icon-192.png",
+  }));
+});
+
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
   e.waitUntil(

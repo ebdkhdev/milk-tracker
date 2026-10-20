@@ -1,19 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useFormat } from '#/lib/format'
+import { isIos, isStandalone } from '#/lib/platform'
 
 type InstallPromptEvent = Event & { prompt: () => void; userChoice: Promise<unknown> }
 
 const IOS_HINT_KEY = 'suivi-lait-ios-hint-v1'
 
-// iPadOS reports itself as a Mac; touch support tells them apart.
-function isIos() {
-  const ua = navigator.userAgent
-  return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)
-}
-function isStandalone() {
-  return (navigator as Navigator & { standalone?: boolean }).standalone === true ||
-    window.matchMedia('(display-mode: standalone)').matches
-}
 function iosHintDismissed() {
   try { return localStorage.getItem(IOS_HINT_KEY) === '1' } catch (e) { return false }
 }
