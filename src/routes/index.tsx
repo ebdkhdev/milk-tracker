@@ -29,7 +29,7 @@ import { FormatProvider, useFormat } from '#/lib/format'
 import { RTL_LANGS, loadLang, makeT, saveLang } from '#/lib/i18n'
 import type { Lang, Unit } from '#/lib/i18n'
 import { notificationsAvailable, reminderIsDue, showReminderNotification } from '#/lib/reminder'
-import { disablePush, enablePush, loadPush, refreshPush, savePush, updatePush } from '#/lib/push'
+import { disablePush, enablePush, loadPush, refreshPush, savePush, testPush, updatePush } from '#/lib/push'
 import type { PushDevice, PushState } from '#/lib/push'
 import { averageInterval, feedingRhythm } from '#/lib/rhythm'
 import {
@@ -294,6 +294,7 @@ function App() {
                 reminderTime={reminder.time}
                 onEnable={() => enablePush(push, pushDevice).then((r) => { if (r === 'ok') { setPushState(loadPush()); showToast(t('notifOn')) } return r })}
                 onDisable={() => { disablePush(push).then(() => setPushState(loadPush())) }}
+                onTest={() => { testPush(push).then((ok) => showToast(t(ok ? 'notifTestSent' : 'notifError'))) }}
                 onChange={setPush}
               />
             }
@@ -353,7 +354,7 @@ function App() {
           onOpen={(ds) => { goToDate(parseDay(ds)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
           onReport={() => { setSettingsOpen(false); setReportOpen(true) }}
         />
-        <Footer shared={!!sharing.code} />
+        <Footer shared={!!sharing.code} push={push.enabled} />
         </>}
       </div>
       <Toast toast={toast} onDone={closeToast} />
@@ -366,7 +367,7 @@ function queueBaby(b: Baby, updatedAt: number) {
   dbQueue({ kind: 'baby', key: 'baby', data: b, deleted: false, updatedAt }).catch((e) => console.error('Erreur partage', e))
 }
 
-function Footer({ shared }: { shared: boolean }) {
+function Footer({ shared, push }: { shared: boolean; push: boolean }) {
   const { t } = useFormat()
-  return <footer>{t(shared ? 'footerShared' : 'footer')}</footer>
+  return <footer>{t(shared ? 'footerShared' : push ? 'footerPush' : 'footer')}</footer>
 }

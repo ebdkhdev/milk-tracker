@@ -56,6 +56,11 @@ export async function run(DIST) {
     await b.waitFor(`(document.querySelector("#toast .toast-text")||{}).textContent==="Notifications activées"`)
     let sub = await waitSub(() => true, 'subscription')
     equal('subscribed with language, time zone and endpoint', [sub.endpoint, sub.lang, typeof sub.tz], ['https://push.example/phone-A', 'fr', 'string'])
+    sender.sent.length = 0
+    await b.click('#notif-test')
+    await b.waitFor(`(document.querySelector("#toast .toast-text")||{}).textContent.indexOf("Notification envoyée")===0`)
+    equal('test notification pushed to this phone', sender.sent.map((s) => [s.to, s.body]), [['https://push.example/phone-A', 'Les notifications fonctionnent sur ce téléphone.']])
+    equal('footer says a server is used', await b.text('footer'), 'Données stockées sur cet appareil ; les notifications utilisent un serveur en Europe.')
     equal('vitamin D follows the daily reminder (off)', await b.text('#notif-vitd'), 'Vitamine D : active le rappel « chaque matin » dans la carte Vitamine D')
 
     // the daily reminder switch drives the vitamin D push schedule

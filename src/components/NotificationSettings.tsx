@@ -10,12 +10,13 @@ type Props = {
   reminderTime: string
   onEnable: () => Promise<'ok' | 'denied' | 'error'> // must run inside the tap (permission prompt)
   onDisable: () => void
+  onTest: () => void
   onChange: (p: PushState) => void
 }
 
 // Settings section for notifications that work with the app closed. Vitamin D follows the existing daily
 // reminder switch and time (no second setting); the other two are per phone.
-export function NotificationSettings({ push, shared, reminderOn, reminderTime, onEnable, onDisable, onChange }: Props) {
+export function NotificationSettings({ push, shared, reminderOn, reminderTime, onEnable, onDisable, onTest, onChange }: Props) {
   const { t } = useFormat()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,7 +56,10 @@ export function NotificationSettings({ push, shared, reminderOn, reminderTime, o
       <p className="settings-note" id="notif-vitd">{reminderOn ? t('notifVitd', { time: reminderTime }) : t('notifVitdOff')}</p>
       {toggle('notif-next', t('notifNext'), push.nextFeed, 'nextFeed')}
       {shared ? toggle('notif-partner', t('notifPartner'), push.partner, 'partner') : null}
-      <button className="settings-reset share-leave" id="notif-disable" onClick={onDisable}>{t('notifDisable')}</button>
+      <div className="settings-actions">
+        <button className="settings-reset" id="notif-test" onClick={onTest}>{t('notifTest')}</button>
+        <button className="settings-reset share-leave" id="notif-disable" onClick={onDisable}>{t('notifDisable')}</button>
+      </div>
     </>
   )
 }

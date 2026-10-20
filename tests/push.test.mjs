@@ -58,9 +58,18 @@ export async function run() {
   equal('given on the other phone: no reminder', (await handleFire({ kind: 'vitd', subId: 2 }, deps, now)).body, { skipped: 'given' })
   await handlePush({ body: { action: 'update', lastFeedAt: now, nextFeedAt: now + 7200e3 }, token: T2 }, deps, now)
   equal('family next bottle is one shared message', scheduler.calls.pop()[2], { familyId: 7, lastFeedAt: now })
-  store.families.get(hashCode(code)).lastFeedAt = now + 60e3
-  equal('a newer family bottle (even unsynced here) skips it', (await handleFire({ kind: 'next', familyId: 7, lastFeedAt: now }, deps, now)).body, { skipped: 'newer bottle' })
+  // the other parent logs a bottle from a phone without notifications: the reminder moves, it isn't lost
+  store.families.get(hashCode(code)).lastFeedAt = now + 3600e3
+  r = await handleFire({ kind: 'next', familyId: 7, lastFeedAt: now }, deps, now + 7200e3)
+  equal('newer family bottle: rescheduled from it with the same interval', [r.body.rescheduled, scheduler.calls.pop()[3]], [now + 3600e3 + 7200e3, now + 3600e3 + 7200e3])
+  equal('nothing sent at the old time', sender.sent.length, 0)
+  await handlePush({ body: { action: 'update', lastFeedAt: now, nextFeedAt: now + 7200e3 }, token: T2 }, deps, now)
+  equal('a phone not synced yet cannot move the family schedule back', store.families.get(hashCode(code)).next.lastFeedAt, now + 3600e3)
+  r = await handleFire({ kind: 'next', familyId: 7, lastFeedAt: now + 3600e3 }, deps, now + 10800e3)
+  equal('rescheduled reminder is sent', r.body.sent, 2)
+  sender.sent.length = 0
   store.families.get(hashCode(code)).lastFeedAt = now
+  store.families.get(hashCode(code)).next = { lastFeedAt: now, nextFeedAt: now + 7200e3, msgId: 'x' }
   r = await handleFire({ kind: 'next', familyId: 7, lastFeedAt: now }, deps, now)
   equal('family next bottle goes to every opted-in phone', sender.sent.splice(0).map((s) => s.body), ['Le prochain biberon est prévu vers 14:00.', 'The next bottle is due around 08:00.'])
 
@@ -73,6 +82,8 @@ export async function run() {
   equal('an old bottle (import) is not news', await notifyPartners({ familyId: 7, inserted: [feed('o', 90, 'Papa', 3600e3)], senderHash: null }, deps, now), 0)
   equal('without a name: "The other parent"', (await notifyPartners({ familyId: 7, inserted: [feed('z', 60)], senderHash: tokenHash(T1) }, deps, now), sender.sent.pop().title), 'The other parent added a bottle')
 
+  equal('test notification to the asking phone', [(await push({ action: 'test' }, T1)).body.sent, sender.sent.pop()], [1, { to: 'https://push.example/1', title: 'Milk Tracker', body: 'Les notifications fonctionnent sur ce téléphone.', tag: 'test' }])
+  equal('test needs a subscription', (await push({ action: 'test' }, 'never-subscribed-token-012345')).status, 404)
   await push({ action: 'unsubscribe' }, T2)
   check('unsubscribe removes the phone and its schedule', !store.subs.has(tokenHash(T2)) && scheduler.calls.pop()[0] === 'delete-vitd')
   equal('deleted subscription: delivery skipped', (await handleFire({ kind: 'vitd', subId: 2 }, deps, now)).body, { skipped: 'no subscription' })

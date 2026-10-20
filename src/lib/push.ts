@@ -102,6 +102,12 @@ export async function refreshPush(state: PushState, device: PushDevice) {
   await subscribe(state, device).catch((e) => console.error('push refresh', e))
 }
 
+// Sends a notification to this phone right away (to check that delivery works).
+export async function testPush(state: PushState): Promise<boolean> {
+  const r = await api({ action: 'test' }, state.token).catch(() => null)
+  return !!r && r.status === 200 && r.json.sent > 0
+}
+
 // Keeps the server up to date; it only reschedules what changed. A forgotten phone re-subscribes.
 export async function updatePush(state: PushState, device: PushDevice) {
   if (!loadPush().enabled) return

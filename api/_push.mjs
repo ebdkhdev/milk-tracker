@@ -13,16 +13,19 @@ const TEXT = {
   fr: {
     vitdTitle: 'Vitamine D', vitdBody: "C'est l'heure de la vitamine D.",
     nextTitle: 'Prochain biberon', nextBody: 'Le prochain biberon est prévu vers {time}.',
+    testTitle: 'Milk Tracker', testBody: 'Les notifications fonctionnent sur ce téléphone.',
     partnerTitle: '{name} a ajouté un biberon', partnerBody: '{amount} à {time}', partnerName: "L'autre parent",
   },
   en: {
     vitdTitle: 'Vitamin D', vitdBody: 'Time for vitamin D.',
     nextTitle: 'Next bottle', nextBody: 'The next bottle is due around {time}.',
+    testTitle: 'Milk Tracker', testBody: 'Notifications work on this phone.',
     partnerTitle: '{name} added a bottle', partnerBody: '{amount} at {time}', partnerName: 'The other parent',
   },
   ar: {
     vitdTitle: 'فيتامين د', vitdBody: 'حان وقت فيتامين د.',
     nextTitle: 'الرضعة التالية', nextBody: 'الرضعة التالية متوقعة نحو {time}.',
+    testTitle: 'Milk Tracker', testBody: 'الإشعارات تعمل على هذا الهاتف.',
     partnerTitle: '{name} أضاف رضعة', partnerBody: '{amount} في {time}', partnerName: 'الوالد الآخر',
   },
 }
@@ -82,12 +85,21 @@ function readSubscription(s) {
 //   { action: "subscribe", subscription, prefs, lang, unit, tz, name, familyCode? }
 //   { action: "update", prefs?, lang?, unit?, tz?, name?, familyCode?, vitdGivenDate?, lastFeedAt?, nextFeedAt? }
 //   { action: "unsubscribe" }
+//   { action: "test" }                                                    -> a notification to this phone now
 export async function handlePush({ body, token, familyCode }, deps, now = Date.now()) {
   const { store, scheduler } = deps
   if (!body || typeof body !== 'object') return { status: 400, body: { error: 'bad request' } }
   if (body.action === 'key') return { status: 200, body: { publicKey: deps.publicKey } }
   if (typeof token !== 'string' || token.length < 20 || token.length > 100) return { status: 401, body: { error: 'missing device token' } }
   const hash = tokenHash(token)
+
+  if (body.action === 'test') {
+    const sub = await store.getSub(hash)
+    if (!sub) return { status: 404, body: { error: 'not subscribed' } }
+    const t = text(sub.lang)
+    const sent = await sendAll([sub], () => ({ title: t.testTitle, body: t.testBody, tag: 'test' }), deps)
+    return { status: 200, body: { sent } }
+  }
 
   if (body.action === 'unsubscribe') {
     const sub = await store.getSub(hash)
@@ -119,6 +131,8 @@ export async function handlePush({ body, token, familyCode }, deps, now = Date.n
     const last = Number(body.lastFeedAt), next = Number(body.nextFeedAt)
     if (last > 0 && next > now && next - now < 24 * 3600 * 1000) {
       const scope = sub.familyId ? { familyId: sub.familyId } : { subId: sub.id }
+      // a phone that hasn't synced the latest family bottle yet must not replace the family's schedule
+      if (scope.familyId && last < (await store.familyLastFeedAt(scope.familyId))) return { status: 200, body: { ok: true } }
       const current = await store.getNext(scope)
       if (!current || current.lastFeedAt !== last || current.nextFeedAt !== next) {
         if (current && current.msgId) await scheduler.cancel(current.msgId)
@@ -165,7 +179,18 @@ export async function handleFire(payload, deps, now = Date.now()) {
     const current = await store.getNext(scope)
     // stale: a newer bottle rescheduled it (a missed cancel is harmless)
     if (!current || current.lastFeedAt !== Number(payload.lastFeedAt)) return { status: 200, body: { skipped: 'stale' } }
-    if (scope.familyId && (await store.familyLastFeedAt(scope.familyId)) > current.lastFeedAt) return { status: 200, body: { skipped: 'newer bottle' } }
+    if (scope.familyId) {
+      // A bottle logged since, possibly on a phone without notifications: reschedule from it with the same
+      // interval instead of dropping the reminder (always later than this one, so it cannot loop).
+      const latest = await store.familyLastFeedAt(scope.familyId)
+      if (latest > current.lastFeedAt) {
+        const at = latest + (current.nextFeedAt - current.lastFeedAt)
+        if (at <= now) return { status: 200, body: { skipped: 'newer bottle' } }
+        const msgId = await deps.scheduler.scheduleNext({ ...scope, lastFeedAt: latest }, at)
+        await store.setNext(scope, { lastFeedAt: latest, nextFeedAt: at, msgId })
+        return { status: 200, body: { rescheduled: at } }
+      }
+    }
     const subs = scope.familyId ? await store.familySubs(scope.familyId) : [await store.getSubById(scope.subId)].filter(Boolean)
     const sent = await sendAll(subs.filter((s) => s.nextFeed), (sub) => {
       const t = text(sub.lang)
