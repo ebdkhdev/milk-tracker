@@ -17,6 +17,20 @@ export const pgStore = {
     await getPool().query('INSERT INTO families (secret_hash) VALUES ($1)', [hash])
   },
 
+  // fixed-window counter; expired buckets are swept now and then
+  async hit(bucket, max, windowSeconds) {
+    const r = await getPool().query(
+      `INSERT INTO rate_hits (bucket, count, reset_at) VALUES ($1, 1, now() + make_interval(secs => $2))
+       ON CONFLICT (bucket) DO UPDATE SET
+         count = CASE WHEN rate_hits.reset_at < now() THEN 1 ELSE rate_hits.count + 1 END,
+         reset_at = CASE WHEN rate_hits.reset_at < now() THEN now() + make_interval(secs => $2) ELSE rate_hits.reset_at END
+       RETURNING count`,
+      [bucket, windowSeconds],
+    )
+    if (Math.random() < 0.01) getPool().query("DELETE FROM rate_hits WHERE reset_at < now() - interval '1 day'").catch(() => {})
+    return r.rows[0].count <= max
+  },
+
   // records go with the family (ON DELETE CASCADE)
   async deleteFamily(hash) {
     const r = await getPool().query('DELETE FROM families WHERE secret_hash = $1', [hash])

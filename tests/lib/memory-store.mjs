@@ -7,6 +7,14 @@ export function memoryStore() {
     // test helpers: make the API fail (offline phone) or inspect a family
     down: false,
     families,
+    hits: new Map(),
+    async hit(bucket, max, windowSeconds) {
+      const now = Date.now()
+      const h = this.hits.get(bucket)
+      if (!h || h.reset < now) { this.hits.set(bucket, { count: 1, reset: now + windowSeconds * 1000 }); return 1 <= max }
+      h.count++
+      return h.count <= max
+    },
     async createFamily(hash) { families.set(hash, new Map()) },
     async deleteFamily(hash) { return families.delete(hash) },
     async sync(hash, since, changes, limit) {

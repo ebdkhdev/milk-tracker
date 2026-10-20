@@ -25,6 +25,11 @@ await client.query(`
     PRIMARY KEY (family_id, kind, key)
   );
   CREATE INDEX IF NOT EXISTS records_family_seq ON records (family_id, seq);
+  CREATE TABLE IF NOT EXISTS rate_hits (
+    bucket text PRIMARY KEY,               -- kind + hash (IPs are never stored in clear)
+    count int NOT NULL,
+    reset_at timestamptz NOT NULL
+  );
 `)
 console.log('schema ok')
 await client.end()

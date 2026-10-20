@@ -151,7 +151,7 @@ export async function serve(dir, port = 8765, api = null) {
       let body = null
       try { body = JSON.parse(raw) } catch (e) {}
       const { handle } = await import('../../api/_core.mjs')
-      const r = await handle({ body, code: req.headers['x-family-code'] }, api)
+      const r = await handle({ body, code: req.headers['x-family-code'], ip: req.socket.remoteAddress }, api)
       res.writeHead(r.status, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify(r.body))
       return
