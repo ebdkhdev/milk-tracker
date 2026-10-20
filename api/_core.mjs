@@ -5,7 +5,10 @@
 // POST /api/sync { action: "delete" }                          -> { deleted: true } (family and all its records)
 //   header X-Family-Code: the family code (never in the URL); 404 when the family does not exist (any more)
 //
-// A change is { kind: "feed" | "daily" | "baby", key, data, deleted, updatedAt (ms) }. The store keeps, per
+// A change is { kind, key, data, deleted, updatedAt (ms) }. Kinds: "feed", "daily" and "baby" are the first
+// baby's (unchanged since v2.6, so older apps keep working); "bfeed" (bottles) and "day" (vitamin D) belong
+// to the other babies, "profile" holds names and sex (and the other babies' settings), "event" diapers, sleep
+// and growth. Older apps ignore the kinds they don't know. The store keeps, per
 // family and (kind, key), the change with the latest updatedAt (last write wins, deletions kept as tombstones),
 // each with a per-write sequence number; a client pulls everything after the sequence it last saw.
 import { createHash, randomBytes } from 'node:crypto'
@@ -14,7 +17,11 @@ export const MAX_CHANGES = 500 // per request; clients send their queue in chunk
 export const MAX_PULL = 1000 // per response; `more` tells the client to ask again
 const MAX_DATA_BYTES = 2048
 const CLOCK_SKEW_MS = 5 * 60 * 1000 // a phone clock ahead of the server can't win conflicts forever
-const KEY_RE = { feed: /^[\w.-]{1,64}$/, daily: /^\d{4}-\d{2}-\d{2}$/, baby: /^baby$/ }
+const ID = '[\\w.-]{1,64}'
+const KEY_RE = {
+  feed: new RegExp(`^${ID}$`), daily: /^\d{4}-\d{2}-\d{2}$/, baby: /^baby$/,
+  bfeed: new RegExp(`^${ID}$`), day: new RegExp(`^${ID}\\|\\d{4}-\\d{2}-\\d{2}$`), profile: new RegExp(`^${ID}$`), event: new RegExp(`^${ID}$`),
+}
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no 0/O, 1/I: easy to read aloud and type
 
 // Abuse limits [requests, window in seconds]. Normal use is about 30 syncs per 10 minutes for a family.

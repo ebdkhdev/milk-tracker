@@ -16,7 +16,7 @@ await client.query(`
   CREATE SEQUENCE IF NOT EXISTS records_seq;
   CREATE TABLE IF NOT EXISTS records (
     family_id bigint NOT NULL REFERENCES families(id) ON DELETE CASCADE,
-    kind text NOT NULL CHECK (kind IN ('feed', 'daily', 'baby')),
+    kind text NOT NULL,
     key text NOT NULL,
     data jsonb,                            -- null for a deletion (tombstone)
     deleted boolean NOT NULL DEFAULT false,
@@ -25,6 +25,9 @@ await client.query(`
     PRIMARY KEY (family_id, kind, key)
   );
   CREATE INDEX IF NOT EXISTS records_family_seq ON records (family_id, seq);
+  -- kinds allowed (v2.9: other babies, profiles, events); the constraint is replaced so older schemas upgrade
+  ALTER TABLE records DROP CONSTRAINT IF EXISTS records_kind_check;
+  ALTER TABLE records ADD CONSTRAINT records_kind_check CHECK (kind IN ('feed', 'daily', 'baby', 'bfeed', 'day', 'profile', 'event'));
   -- push notifications: one row per phone that enabled them
   CREATE TABLE IF NOT EXISTS push_subs (
     id bigserial PRIMARY KEY,

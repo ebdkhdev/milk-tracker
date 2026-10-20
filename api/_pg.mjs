@@ -150,17 +150,28 @@ export const pushStore = {
     const [table, id] = scope.familyId ? ['families', scope.familyId] : ['push_subs', scope.subId]
     await getPool().query(`UPDATE ${table} SET next_last_feed_at = $2, next_feed_at = $3, next_msg_id = $4 WHERE id = $1`, [id, v.lastFeedAt, v.nextFeedAt, v.msgId])
   },
+  // given to every baby of the family that day: the first baby ("daily") and each other profile ("day")
   async familyVitdGiven(familyId, date) {
     const r = await getPool().query(
-      `SELECT 1 FROM records WHERE family_id = $1 AND kind = 'daily' AND key = $2 AND NOT deleted AND (data->>'vitaminD')::boolean`,
+      `SELECT
+         EXISTS (SELECT 1 FROM records WHERE family_id = $1 AND kind = 'daily' AND key = $2 AND NOT deleted AND (data->>'vitaminD')::boolean) AS first,
+         (SELECT count(*) FROM records p WHERE p.family_id = $1 AND p.kind = 'profile' AND p.key <> 'b1' AND NOT p.deleted
+            AND NOT EXISTS (SELECT 1 FROM records d WHERE d.family_id = $1 AND d.kind = 'day' AND d.key = p.key || '|' || $2
+                            AND NOT d.deleted AND (d.data->>'vitaminD')::boolean)) AS missing`,
       [familyId, date],
     )
-    return r.rowCount > 0
+    return r.rows[0].first && Number(r.rows[0].missing) === 0
+  },
+  // baby names by id, when the family has more than one baby (otherwise notifications don't name it)
+  async familyBabyNames(familyId) {
+    const r = await getPool().query(`SELECT key, data FROM records WHERE family_id = $1 AND kind = 'profile' AND NOT deleted`, [familyId])
+    const names = Object.fromEntries(r.rows.map((x) => [x.key, (x.data && x.data.name) || '']))
+    return Object.keys(names).some((k) => k !== 'b1') ? names : {}
   },
   async familyLastFeedAt(familyId) {
     const r = await getPool().query(
       `SELECT max((extract(epoch FROM (data->>'time')::timestamptz) * 1000)::bigint) AS last
-       FROM records WHERE family_id = $1 AND kind = 'feed' AND NOT deleted`,
+       FROM records WHERE family_id = $1 AND kind IN ('feed', 'bfeed') AND NOT deleted`,
       [familyId],
     )
     return Number(r.rows[0].last) || 0

@@ -14,19 +14,19 @@ const TEXT = {
     vitdTitle: 'Vitamine D', vitdBody: "C'est l'heure de la vitamine D.",
     nextTitle: 'Prochain biberon', nextBody: 'Le prochain biberon est prévu vers {time}.',
     testTitle: 'Milk Tracker', testBody: 'Les notifications fonctionnent sur ce téléphone.',
-    partnerTitle: '{name} a ajouté un biberon', partnerBody: '{amount} à {time}', partnerName: "L'autre parent",
+    partnerTitle: '{name} a ajouté un biberon', partnerTitleBaby: '{name} a ajouté un biberon pour {baby}', partnerBody: '{amount} à {time}', partnerName: "L'autre parent",
   },
   en: {
     vitdTitle: 'Vitamin D', vitdBody: 'Time for vitamin D.',
     nextTitle: 'Next bottle', nextBody: 'The next bottle is due around {time}.',
     testTitle: 'Milk Tracker', testBody: 'Notifications work on this phone.',
-    partnerTitle: '{name} added a bottle', partnerBody: '{amount} at {time}', partnerName: 'The other parent',
+    partnerTitle: '{name} added a bottle', partnerTitleBaby: '{name} added a bottle for {baby}', partnerBody: '{amount} at {time}', partnerName: 'The other parent',
   },
   ar: {
     vitdTitle: 'فيتامين د', vitdBody: 'حان وقت فيتامين د.',
     nextTitle: 'الرضعة التالية', nextBody: 'الرضعة التالية متوقعة نحو {time}.',
     testTitle: 'Milk Tracker', testBody: 'الإشعارات تعمل على هذا الهاتف.',
-    partnerTitle: '{name} أضاف رضعة', partnerBody: '{amount} في {time}', partnerName: 'الوالد الآخر',
+    partnerTitle: '{name} أضاف رضعة', partnerTitleBaby: '{name} أضاف رضعة لـ{baby}', partnerBody: '{amount} في {time}', partnerName: 'الوالد الآخر',
   },
 }
 const UNIT = { fr: { ml: 'ml', oz: 'oz' }, en: { ml: 'ml', oz: 'oz' }, ar: { ml: 'مل', oz: 'أونصة' } }
@@ -203,16 +203,20 @@ export async function handleFire(payload, deps, now = Date.now()) {
 
 // After a sync: tell the family's other phones about bottles just added (not edits, undo or old imports).
 export async function notifyPartners({ familyId, inserted, senderHash }, deps, now = Date.now()) {
-  const fresh = inserted.filter((c) => c.kind === 'feed' && !c.deleted && now - c.updatedAt < 15 * 60 * 1000)
+  const fresh = inserted.filter((c) => (c.kind === 'feed' || c.kind === 'bfeed') && !c.deleted && now - c.updatedAt < 15 * 60 * 1000)
   if (!fresh.length || fresh.length > 3) return 0 // a join snapshot or an import is not news
   const subs = (await deps.store.familySubs(familyId)).filter((s) => s.partner && s.hash !== senderHash)
+  if (!subs.length) return 0
+  const names = deps.store.familyBabyNames ? await deps.store.familyBabyNames(familyId) : {}
   let sent = 0
   for (const c of fresh) {
     const f = c.data
     sent += await sendAll(subs, (sub) => {
       const t = text(sub.lang)
       return {
-        title: fill(t.partnerTitle, { name: f.by || t.partnerName }),
+        title: names[f.babyId || 'b1']
+          ? fill(t.partnerTitleBaby, { name: f.by || t.partnerName, baby: names[f.babyId || 'b1'] })
+          : fill(t.partnerTitle, { name: f.by || t.partnerName }),
         body: fill(t.partnerBody, { amount: amountText(Number(f.ml), sub), time: localParts(Date.parse(f.time), sub.tz).time }),
         tag: 'feed-' + f.id,
       }
