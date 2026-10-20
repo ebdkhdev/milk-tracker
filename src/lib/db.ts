@@ -186,8 +186,10 @@ export function dbAckOutbox(sent: Change[]): Promise<void> {
 }
 
 // Applies changes pulled from the family (not queued again). A local record newer than the remote one is
-// kept (its own change is still in the outbox). Returns the number of records changed and the latest baby
-// settings received, if any.
+// kept (its own change is still in the outbox). On equal timestamps the server's copy wins, because the server
+// kept it over ours: this is what makes two phones converge when both had the same record before sharing
+// (every pre-sharing record has updatedAt 0). Identical content (our own echo) is not rewritten.
+// Returns the number of records changed and the latest baby settings received, if any.
 export function dbApplyRemote(changes: Change[]): Promise<{ applied: number; baby: Change | null }> {
   return openDb().then(
     (db) =>
@@ -201,8 +203,12 @@ export function dbApplyRemote(changes: Change[]): Promise<{ applied: number; bab
           const store = tx.objectStore(c.kind === 'feed' ? STORE : DAILY_STORE)
           const get = store.get(c.key)
           get.onsuccess = () => {
-            const local = get.result as { updatedAt?: number } | undefined
-            if (local && (local.updatedAt || 0) >= c.updatedAt) return
+            const local = get.result as Record<string, unknown> | undefined
+            if (local) {
+              const lu = Number(local.updatedAt) || 0
+              if (lu > c.updatedAt) return
+              if (lu === c.updatedAt && (c.deleted ? false : sameRecord(c.kind, local, c.data as Record<string, unknown>))) return
+            }
             if (c.deleted) { if (local) { store.delete(c.key); applied++ } }
             else { store.put({ ...(c.data as object), updatedAt: c.updatedAt }); applied++ }
           }
@@ -220,6 +226,12 @@ function validRemote(c: Change) {
   if (!d) return false
   if (c.kind === 'feed') return d.id === c.key && typeof d.date === 'string' && DAY_RE.test(d.date) && Number(d.ml) > 0 && typeof d.time === 'string' && !isNaN(Date.parse(d.time))
   return d.date === c.key && typeof d.vitaminD === 'boolean'
+}
+
+// Compares the meaningful fields only: Postgres jsonb does not keep key order, so JSON strings can differ.
+const FIELDS: Record<string, string[]> = { feed: ['id', 'date', 'ml', 'time', 'type', 'note'], daily: ['date', 'vitaminD', 'vitaminDTime'] }
+function sameRecord(kind: ChangeKind, a: Record<string, unknown>, b: Record<string, unknown>) {
+  return (FIELDS[kind] || []).every((f) => (a[f] ?? null) === (b[f] ?? null))
 }
 
 export function newId() {

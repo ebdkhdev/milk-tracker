@@ -33,12 +33,17 @@ export async function run(DIST) {
     await sleep(300) // let the UI reload the day after applying remote changes
     return (await outboxSize()) === 0
   }
+  // a daily record written as the app did before sharing existed (no updatedAt)
+  const putOldDaily = (date, given) => b.ev(`new Promise(function(res){var r=indexedDB.open("suivi-lait-db");r.onsuccess=function(){var tx=r.result.transaction("daily","readwrite");tx.objectStore("daily").put({date:${JSON.stringify(date)},vitaminD:${given},vitaminDTime:${given ? '"2026-01-01T08:00:00.000Z"' : 'null'}});tx.oncomplete=function(){r.result.close();res(1)}}})`)
+  const getDaily = (date) => b.ev(`new Promise(function(res){var r=indexedDB.open("suivi-lait-db");r.onsuccess=function(){var q=r.result.transaction("daily").objectStore("daily").get(${JSON.stringify(date)});q.onsuccess=function(){r.result.close();res(q.result?q.result.vitaminD:null)}}})`)
+  const OLD_DAY = '2026-01-01'
   const rowIdx = (amt) => b.ev(`[...document.querySelectorAll(".feed-item")].findIndex(e=>e.querySelector(".amt").textContent===${JSON.stringify(amt)})`)
 
   try {
     // Phone A: two bottles, creates the family
     await open('A')
     for (const i of [0, 1]) { await b.click('#quick-grid button', i); await sleep(150) }
+    await putOldDaily(OLD_DAY, true)
     await openSettings()
     await b.click('#share-create')
     await b.waitFor(`!!document.getElementById("share-code")`)
@@ -52,6 +57,7 @@ export async function run(DIST) {
     await open('B')
     await b.click('#quick-grid button', 2); await sleep(150)
     await b.click('#vitd-btn'); await sleep(150)
+    await putOldDaily(OLD_DAY, false)
     await openSettings()
     await b.setValue('#share-code-input', 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF-GG')
     await b.click('#share-join')
@@ -64,6 +70,7 @@ export async function run(DIST) {
     check('joined with a pasted, re-cased code', true)
     await syncAndWait()
     equal('histories merged without duplicates', await amounts(), '120 ml,60 ml,90 ml')
+    equal('same pre-sharing day on both phones converges to the family copy', await getDaily(OLD_DAY), true)
 
     // B deletes the 60 ml bottle
     await b.click('.feed-item .del', await rowIdx('60 ml'))
@@ -76,6 +83,7 @@ export async function run(DIST) {
     await syncAndWait()
     equal('A: deletion and B\'s bottle received', await amounts(), '120 ml,90 ml')
     equal('A: vitamin D from B', await b.ev(`document.getElementById("vitd-btn").getAttribute("aria-pressed")`), 'true')
+    equal('A: kept its copy of the pre-sharing day', await getDaily(OLD_DAY), true)
     await b.click('.feed-item .del', await rowIdx('90 ml'))
     await syncAndWait() // the deletion reaches the server
     await b.waitFor(`!!document.getElementById("toast-undo")`, 1000).catch(() => {})
