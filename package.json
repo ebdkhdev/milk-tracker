@@ -14,10 +14,12 @@
     "test": "npm run build && node tests/run.mjs"
   },
   "dependencies": {
+    "@neondatabase/auth": "^0.6.0-beta",
     "@tanstack/react-router": "1.170.45",
     "@tanstack/react-start": "1.169.3",
     "@upstash/qstash": "^2.12.0",
     "@vercel/functions": "^3.10.1",
+    "jose": "^6.2.13",
     "pg": "^8.23.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

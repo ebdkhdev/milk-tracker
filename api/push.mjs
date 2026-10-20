@@ -1,6 +1,7 @@
 // Vercel Function: push subscription and state (see _push.mjs).
+import { neonKeySet, verifyAccount } from './_account.mjs'
 import { handlePush } from './_push.mjs'
-import { pgStore, pushStore } from './_pg.mjs'
+import { accountStore, pgStore, pushStore } from './_pg.mjs'
 import { qstashScheduler } from './_qstash.mjs'
 import { webPushSender } from './_webpush.mjs'
 import { createHash } from 'node:crypto'
@@ -14,8 +15,15 @@ export async function POST(request) {
       return Response.json({ error: 'too many requests' }, { status: 429 })
     }
     const familyCode = request.headers.get('x-family-code')
+    // signed in: the household comes from the account (the code header is then ignored)
+    let familyId
+    if (request.headers.get('authorization')) {
+      const userId = await verifyAccount(request.headers.get('authorization'), neonKeySet())
+      if (!userId) return Response.json({ error: 'bad token' }, { status: 401 })
+      familyId = await accountStore.memberFamily(userId)
+    }
     const r = await handlePush(
-      { body, token: request.headers.get('x-device-token'), familyCode: familyCode === null ? undefined : familyCode },
+      { body, token: request.headers.get('x-device-token'), familyCode: familyCode === null ? undefined : familyCode, familyId },
       { store: pushStore, scheduler: qstashScheduler, sender: webPushSender, publicKey: process.env.VAPID_PUBLIC_KEY },
     )
     return Response.json(r.body, { status: r.status, headers: { 'Cache-Control': 'no-store' } })

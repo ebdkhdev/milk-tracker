@@ -54,6 +54,24 @@ await client.query(`
   ALTER TABLE families ADD COLUMN IF NOT EXISTS next_last_feed_at bigint;
   ALTER TABLE families ADD COLUMN IF NOT EXISTS next_feed_at bigint;
   ALTER TABLE families ADD COLUMN IF NOT EXISTS next_msg_id text;
+  -- accounts (Neon Auth) and households: one household per account, invitations by email
+  ALTER TABLE families ADD COLUMN IF NOT EXISTS via_account boolean NOT NULL DEFAULT false;
+  CREATE TABLE IF NOT EXISTS family_members (
+    user_id uuid PRIMARY KEY REFERENCES neon_auth."user"(id) ON DELETE CASCADE,
+    family_id bigint NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now()
+  );
+  CREATE INDEX IF NOT EXISTS family_members_family ON family_members (family_id);
+  CREATE TABLE IF NOT EXISTS family_invites (
+    id bigserial PRIMARY KEY,
+    family_id bigint NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+    email text NOT NULL,                     -- lower-case; accepted only by a verified account with this email
+    invited_by uuid NOT NULL REFERENCES neon_auth."user"(id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    expires_at timestamptz NOT NULL,
+    UNIQUE (family_id, email)
+  );
+  CREATE INDEX IF NOT EXISTS family_invites_email ON family_invites (email);
   CREATE TABLE IF NOT EXISTS rate_hits (
     bucket text PRIMARY KEY,               -- kind + hash (IPs are never stored in clear)
     count int NOT NULL,

@@ -86,7 +86,8 @@ function readSubscription(s) {
 //   { action: "update", prefs?, lang?, unit?, tz?, name?, familyCode?, vitdGivenDate?, lastFeedAt?, nextFeedAt? }
 //   { action: "unsubscribe" }
 //   { action: "test" }                                                    -> a notification to this phone now
-export async function handlePush({ body, token, familyCode }, deps, now = Date.now()) {
+// familyId: resolved from a signed-in account by the endpoint; otherwise the family code is used
+export async function handlePush({ body, token, familyCode, familyId: accountFamily }, deps, now = Date.now()) {
   const { store, scheduler } = deps
   if (!body || typeof body !== 'object') return { status: 400, body: { error: 'bad request' } }
   if (body.action === 'key') return { status: 200, body: { publicKey: deps.publicKey } }
@@ -112,7 +113,8 @@ export async function handlePush({ body, token, familyCode }, deps, now = Date.n
 
   // family membership is proven by the family code, sent like for /api/sync (never stored in clear)
   let familyId
-  if (familyCode !== undefined) familyId = normalizeCode(familyCode).length === 26 ? await store.familyId(hashCode(familyCode)) : null
+  if (accountFamily !== undefined) familyId = accountFamily || null
+  else if (familyCode !== undefined) familyId = normalizeCode(familyCode).length === 26 ? await store.familyId(hashCode(familyCode)) : null
 
   if (body.action === 'subscribe') {
     const subscription = readSubscription(body.subscription)

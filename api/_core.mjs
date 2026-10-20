@@ -64,11 +64,13 @@ export function validateChanges(changes, now) {
   return [...byKey.values()]
 }
 
-// store: { createFamily(hash), sync(hash, since, changes, limit) -> { cursor, changes, more } | null, deleteFamily(hash) -> bool,
+// store: { createFamily(hash), sync(ref, since, changes, limit) -> { cursor, changes, more } | null, deleteFamily(ref) -> bool,
+//          (ref = { hash } from a family code, or { id } from a signed-in account's membership)
 //          hit(bucket, max, windowSeconds) -> bool (false once the bucket is over its limit) }
 const TOO_MANY = { status: 429, body: { error: 'too many requests' } }
 
-export async function handle({ body, code, ip }, store, now = Date.now()) {
+// familyId: set by the endpoint when the request carries a valid account token (it then replaces the code)
+export async function handle({ body, code, ip, familyId }, store, now = Date.now()) {
   if (!body || typeof body !== 'object') return { status: 400, body: { error: 'bad request' } }
   if (!(await store.hit(bucket('ip', ip || 'unknown'), ...LIMITS.ip))) return TOO_MANY
   if (body.action === 'create') {
@@ -77,19 +79,22 @@ export async function handle({ body, code, ip }, store, now = Date.now()) {
     await store.createFamily(hashCode(newFamilyCode))
     return { status: 200, body: { code: newFamilyCode } }
   }
+  let ref = null
   if (body.action === 'sync' || body.action === 'delete') {
-    if (normalizeCode(code).length !== 26) return { status: 401, body: { error: 'missing family code' } }
-    if (!(await store.hit(bucket('family', hashCode(code)), ...LIMITS.family))) return TOO_MANY
+    if (familyId) ref = { id: familyId }
+    else if (normalizeCode(code).length === 26) ref = { hash: hashCode(code) }
+    else return { status: 401, body: { error: 'missing family code' } }
+    if (!(await store.hit(bucket('family', ref.id || ref.hash), ...LIMITS.family))) return TOO_MANY
   }
   if (body.action === 'delete') {
-    const deleted = await store.deleteFamily(hashCode(code))
+    const deleted = await store.deleteFamily(ref)
     return deleted ? { status: 200, body: { deleted: true } } : { status: 404, body: { error: 'unknown family' } }
   }
   if (body.action === 'sync') {
     const since = Math.max(0, Math.floor(Number(body.since) || 0))
     const changes = validateChanges(body.changes || [], now)
     if (typeof changes === 'string') return { status: 400, body: { error: changes } }
-    const result = await store.sync(hashCode(code), since, changes, MAX_PULL)
+    const result = await store.sync(ref, since, changes, MAX_PULL)
     if (!result) return { status: 404, body: { error: 'unknown family' } }
     // inserted / familyId are for the server only (partner notifications), not part of the response
     const { inserted = [], familyId, ...pub } = result

@@ -32,18 +32,19 @@ export const pgStore = {
   },
 
   // records go with the family (ON DELETE CASCADE)
-  async deleteFamily(hash) {
-    const r = await getPool().query('DELETE FROM families WHERE secret_hash = $1', [hash])
+  // ref: { hash } (family code, older apps) or { id } (resolved from a signed-in account)
+  async deleteFamily(ref) {
+    const r = await getPool().query(`DELETE FROM families WHERE ${ref.id ? 'id' : 'secret_hash'} = $1`, [ref.id || ref.hash])
     return r.rowCount > 0
   },
 
-  async sync(hash, since, changes, limit) {
+  async sync(ref, since, changes, limit) {
     const client = await getPool().connect()
     try {
       await client.query('BEGIN')
       // Locking the family row serialises its syncs, so sequence numbers commit in order and no client can
       // skip past a row that commits later.
-      const fam = await client.query('SELECT id FROM families WHERE secret_hash = $1 FOR UPDATE', [hash])
+      const fam = await client.query(`SELECT id FROM families WHERE ${ref.id ? 'id' : 'secret_hash'} = $1 FOR UPDATE`, [ref.id || ref.hash])
       if (fam.rowCount === 0) { await client.query('ROLLBACK'); return null }
       const familyId = fam.rows[0].id
       let inserted = []
@@ -175,5 +176,67 @@ export const pushStore = {
       [familyId],
     )
     return Number(r.rows[0].last) || 0
+  },
+}
+
+// ---- Accounts and households (see _account.mjs). Accounts live in Neon Auth's neon_auth."user". ----
+
+export const accountStore = {
+  async getUser(userId) {
+    const r = await getPool().query('SELECT id, email, "emailVerified" AS verified, name FROM neon_auth."user" WHERE id = $1', [userId])
+    const u = r.rows[0]
+    return u ? { id: u.id, email: u.email, emailVerified: u.verified, name: u.name } : null
+  },
+  async memberFamily(userId) {
+    const r = await getPool().query('SELECT family_id FROM family_members WHERE user_id = $1', [userId])
+    return r.rowCount ? Number(r.rows[0].family_id) : null
+  },
+  async addMember(userId, familyId) {
+    await getPool().query('INSERT INTO family_members (user_id, family_id) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET family_id = excluded.family_id', [userId, familyId])
+  },
+  async removeMember(userId) { await getPool().query('DELETE FROM family_members WHERE user_id = $1', [userId]) },
+  async familyMembers(familyId) {
+    const r = await getPool().query(
+      'SELECT m.user_id, u.email, u.name FROM family_members m JOIN neon_auth."user" u ON u.id = m.user_id WHERE m.family_id = $1 ORDER BY m.created_at',
+      [familyId],
+    )
+    return r.rows.map((x) => ({ userId: x.user_id, email: x.email, name: x.name }))
+  },
+  async familyIdByHash(hash) {
+    const r = await getPool().query('SELECT id FROM families WHERE secret_hash = $1', [hash])
+    return r.rowCount ? Number(r.rows[0].id) : null
+  },
+  async createAccountFamily(hash) {
+    const r = await getPool().query('INSERT INTO families (secret_hash, via_account) VALUES ($1, true) RETURNING id', [hash])
+    return Number(r.rows[0].id)
+  },
+  // only households created for accounts (never a code family, which older phones may still use)
+  async deleteFamilyIfOrphan(familyId) {
+    await getPool().query('DELETE FROM families f WHERE f.id = $1 AND f.via_account AND NOT EXISTS (SELECT 1 FROM family_members m WHERE m.family_id = f.id)', [familyId])
+  },
+  async upsertInvite(familyId, email, invitedBy, expiresAt) {
+    await getPool().query(
+      `INSERT INTO family_invites (family_id, email, invited_by, expires_at) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (family_id, email) DO UPDATE SET invited_by = excluded.invited_by, expires_at = excluded.expires_at, created_at = now()`,
+      [familyId, email, invitedBy, expiresAt],
+    )
+  },
+  async getInvite(id) {
+    const r = await getPool().query('SELECT id, family_id, email, expires_at FROM family_invites WHERE id = $1', [id])
+    const x = r.rows[0]
+    return x ? { id: Number(x.id), familyId: Number(x.family_id), email: x.email, expiresAt: new Date(x.expires_at).getTime() } : null
+  },
+  async deleteInvite(id) { await getPool().query('DELETE FROM family_invites WHERE id = $1', [id]) },
+  async sentInvites(familyId, now) {
+    const r = await getPool().query('SELECT id, email FROM family_invites WHERE family_id = $1 AND expires_at > $2 ORDER BY created_at', [familyId, new Date(now)])
+    return r.rows.map((x) => ({ id: Number(x.id), email: x.email }))
+  },
+  async invitesFor(email, now) {
+    const r = await getPool().query(
+      `SELECT i.id, i.family_id, u.name, u.email FROM family_invites i LEFT JOIN neon_auth."user" u ON u.id = i.invited_by
+       WHERE i.email = $1 AND i.expires_at > $2 ORDER BY i.created_at`,
+      [email, new Date(now)],
+    )
+    return r.rows.map((x) => ({ id: Number(x.id), familyId: Number(x.family_id), fromName: x.name, fromEmail: x.email }))
   },
 }

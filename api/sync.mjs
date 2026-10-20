@@ -1,7 +1,8 @@
 // Vercel Function: family sharing (see _core.mjs for the protocol).
 import { waitUntil } from '@vercel/functions'
+import { neonKeySet, verifyAccount } from './_account.mjs'
 import { handle } from './_core.mjs'
-import { pgStore, pushStore } from './_pg.mjs'
+import { accountStore, pgStore, pushStore } from './_pg.mjs'
 import { notifyPartners, tokenHash } from './_push.mjs'
 import { webPushSender } from './_webpush.mjs'
 
@@ -11,7 +12,15 @@ export async function POST(request) {
   try {
     // Vercel puts the client address first in x-forwarded-for
     const ip = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim()
-    const r = await handle({ body, code: request.headers.get('x-family-code'), ip }, pgStore)
+    // a signed-in phone is found by its account's household; older apps and signed-out phones by their code
+    let familyId
+    if (request.headers.get('authorization')) {
+      const userId = await verifyAccount(request.headers.get('authorization'), neonKeySet())
+      if (!userId) return Response.json({ error: 'bad token' }, { status: 401 })
+      familyId = await accountStore.memberFamily(userId)
+      if (!familyId) return Response.json({ error: 'no household' }, { status: 409 })
+    }
+    const r = await handle({ body, code: request.headers.get('x-family-code'), ip, familyId }, pgStore)
     if (r.inserted && r.inserted.length) {
       // tell the other parent about new bottles, after responding (a push failure never fails a sync)
       const device = request.headers.get('x-device-token')

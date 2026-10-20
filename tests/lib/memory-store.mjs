@@ -16,8 +16,10 @@ export function memoryStore() {
       return h.count <= max
     },
     async createFamily(hash) { families.set(hash, new Map()) },
-    async deleteFamily(hash) { return families.delete(hash) },
-    async sync(hash, since, changes, limit) {
+    async deleteFamily(ref) { return families.delete(ref.id || ref.hash) },
+    // families are keyed by code hash; an account-made family uses its id as key (ids are those keys here)
+    async sync(ref, since, changes, limit) {
+      const hash = ref.id || ref.hash
       const fam = families.get(hash)
       if (!fam) return null
       const inserted = []
@@ -93,6 +95,37 @@ export function fakeSender(gone = new Set()) {
       if (gone.has(sub.endpoint)) return 'gone'
       this.sent.push({ to: sub.endpoint, ...payload })
       return 'ok'
+    },
+  }
+}
+
+// In-memory accounts and households (same interface as accountStore in api/_pg.mjs). `users` is filled by the
+// test: users.set(id, { id, email, emailVerified, name }). `families` is the sync store's map, so a household
+// created here can sync through memoryStore with ref { id }.
+export function memoryAccountStore(syncStore) {
+  const users = new Map(), members = new Map(), invites = new Map(), viaAccount = new Set()
+  let nextInvite = 0, nextFamily = 0
+  const families = syncStore.families
+  return {
+    users, members, invites,
+    async getUser(id) { return users.get(id) || null },
+    async memberFamily(id) { return members.get(id) ?? null },
+    async addMember(id, familyId) { members.set(id, familyId) },
+    async removeMember(id) { members.delete(id) },
+    async familyMembers(familyId) { return [...members].filter(([, f]) => f === familyId).map(([id]) => ({ userId: id, email: users.get(id).email, name: users.get(id).name })) },
+    async familyIdByHash(hash) { return families.has(hash) ? hash : null },
+    async createAccountFamily() { const id = 'acct-family-' + ++nextFamily; families.set(id, new Map()); viaAccount.add(id); return id },
+    async deleteFamilyIfOrphan(id) { if (viaAccount.has(id) && ![...members.values()].includes(id)) families.delete(id) },
+    async upsertInvite(familyId, email, by, expiresAt) {
+      const cur = [...invites.values()].find((i) => i.familyId === familyId && i.email === email)
+      if (cur) Object.assign(cur, { by, expiresAt: +expiresAt })
+      else { const id = ++nextInvite; invites.set(id, { id, familyId, email, by, expiresAt: +expiresAt }) }
+    },
+    async getInvite(id) { return invites.get(id) || null },
+    async deleteInvite(id) { invites.delete(id) },
+    async sentInvites(familyId, now) { return [...invites.values()].filter((i) => i.familyId === familyId && i.expiresAt > now) },
+    async invitesFor(email, now) {
+      return [...invites.values()].filter((i) => i.email === email && i.expiresAt > now).map((i) => ({ ...i, fromName: users.get(i.by)?.name, fromEmail: users.get(i.by)?.email }))
     },
   }
 }
