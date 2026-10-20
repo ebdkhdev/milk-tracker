@@ -19,9 +19,10 @@ type Props = {
   onPeriod: (p: 7 | 30) => void
   onOpen: (dateStr: string) => void
   avgIntervalMin: number | null
+  onReport: () => void
 }
 
-export function Stats({ rows, period, viewing, onPeriod, onOpen, avgIntervalMin }: Props) {
+export function Stats({ rows, period, viewing, onPeriod, onOpen, avgIntervalMin, onReport }: Props) {
   const { t, formatAmount } = useFormat()
   const shared = sharedMin(rows)
   return (
@@ -42,6 +43,9 @@ export function Stats({ rows, period, viewing, onPeriod, onOpen, avgIntervalMin 
         {shared !== null ? t('historyLabel', { v: formatAmount(shared) }) : t('historyLabelVar')}
       </p>
       <History rows={rows} viewing={viewing} onOpen={onOpen} />
+      <div className="report-link">
+        <button className="data-btn" id="report-btn" onClick={onReport}>{t('reportBtn')}</button>
+      </div>
     </>
   )
 }
@@ -58,19 +62,26 @@ function Tile({ value, unit, label, cls }: { value: ReactNode; unit?: string; la
   )
 }
 
+// Period summary shared by the stat tiles and the paediatrician report.
 // Averages are over days that have at least one feed; vitamin D is counted over the whole period.
-function StatTiles({ rows, avgIntervalMin }: { rows: DayRow[]; avgIntervalMin: number | null }) {
-  const { t, locale, unitLabel: u, mlToDisplay, formatAmount } = useFormat()
+export type Summary = {
+  daysWithData: number
+  days: number
+  avgDay: number
+  avgMin: number
+  avgCount: number
+  avgBottle: number
+  reached: number
+  vitd: number
+  best: number
+  bestDay: string | null
+  shared: number | null
+  breastShare: number | null // % of the typed volume, null when no bottle has a type
+}
+export function summarize(rows: DayRow[]): Summary | null {
   const withData = rows.filter((r) => r.count > 0)
   const n = withData.length
-  if (n === 0) {
-    return (
-      <>
-        <div className="stats-grid" id="stats-grid"></div>
-        <p className="stats-note" id="stats-note">{t('statsEmpty', { n: rows.length })}</p>
-      </>
-    )
-  }
+  if (n === 0) return null
   let sumMl = 0, sumCount = 0, sumMin = 0, reached = 0, best = 0
   let bestDay: string | null = null
   withData.forEach((r) => {
@@ -80,36 +91,57 @@ function StatTiles({ rows, avgIntervalMin }: { rows: DayRow[]; avgIntervalMin: n
     if (r.totalMl >= r.minMl) reached++
     if (r.totalMl > best) { best = r.totalMl; bestDay = r.date }
   })
-  const vitd = rows.filter((r) => r.daily && r.daily.vitaminD).length
-  const days = rows.length
-  const avgDay = sumMl / n
-  const avgMin = sumMin / n
-  const shared = sharedMin(rows)
-  const avgBottle = sumCount ? sumMl / sumCount : 0
-  const avgCount = sumCount / n
   const typedMl = rows.reduce((s, r) => s + r.typedMl, 0)
   const breastMl = rows.reduce((s, r) => s + r.breastMl, 0)
-  const bestLabel = bestDay ? parseDay(bestDay).toLocaleDateString(locale, { day: 'numeric', month: 'short' }) : ''
+  return {
+    daysWithData: n,
+    days: rows.length,
+    avgDay: sumMl / n,
+    avgMin: sumMin / n,
+    avgCount: sumCount / n,
+    avgBottle: sumCount ? sumMl / sumCount : 0,
+    reached,
+    vitd: rows.filter((r) => r.daily && r.daily.vitaminD).length,
+    best,
+    bestDay,
+    shared: sharedMin(rows),
+    breastShare: typedMl > 0 ? Math.round((breastMl / typedMl) * 100) : null,
+  }
+}
+
+function StatTiles({ rows, avgIntervalMin }: { rows: DayRow[]; avgIntervalMin: number | null }) {
+  const { t, locale, unitLabel: u, mlToDisplay, formatAmount } = useFormat()
+  const s = summarize(rows)
+  if (!s) {
+    return (
+      <>
+        <div className="stats-grid" id="stats-grid"></div>
+        <p className="stats-note" id="stats-note">{t('statsEmpty', { n: rows.length })}</p>
+      </>
+    )
+  }
+  const n = s.daysWithData, days = s.days
+  const bestLabel = s.bestDay ? parseDay(s.bestDay).toLocaleDateString(locale, { day: 'numeric', month: 'short' }) : ''
 
   return (
     <>
       <div className="stats-grid" id="stats-grid">
-        <Tile value={mlToDisplay(avgDay)} unit={u} label={t('statAvgDay')} cls={avgDay >= avgMin ? 'good' : 'bad'} />
+        <Tile value={mlToDisplay(s.avgDay)} unit={u} label={t('statAvgDay')} cls={s.avgDay >= s.avgMin ? 'good' : 'bad'} />
         <Tile
-          value={reached + '/' + n}
-          label={shared !== null ? t('statDaysReached', { v: formatAmount(shared) }) : t('statDaysReachedVar')}
-          cls={reached === n ? 'good' : reached < n / 2 ? 'bad' : ''}
+          value={s.reached + '/' + n}
+          label={s.shared !== null ? t('statDaysReached', { v: formatAmount(s.shared) }) : t('statDaysReachedVar')}
+          cls={s.reached === n ? 'good' : s.reached < n / 2 ? 'bad' : ''}
         />
-        <Tile value={Math.round(avgCount * 10) / 10} label={t('statPerDay')} />
-        <Tile value={mlToDisplay(avgBottle)} unit={u} label={t('statAvgBottle')} />
+        <Tile value={Math.round(s.avgCount * 10) / 10} label={t('statPerDay')} />
+        <Tile value={mlToDisplay(s.avgBottle)} unit={u} label={t('statAvgBottle')} />
         <Tile
-          value={vitd + '/' + days}
+          value={s.vitd + '/' + days}
           label={t('statVitd')}
-          cls={vitd === days ? 'good' : vitd < days / 2 ? 'bad' : ''}
+          cls={s.vitd === days ? 'good' : s.vitd < days / 2 ? 'bad' : ''}
         />
-        <Tile value={mlToDisplay(best)} unit={u} label={t('statBest', { date: bestLabel })} />
+        <Tile value={mlToDisplay(s.best)} unit={u} label={t('statBest', { date: bestLabel })} />
         {avgIntervalMin !== null ? <Tile value={formatHM(avgIntervalMin)} unit={t('hourShort')} label={t('statInterval')} /> : null}
-        {typedMl > 0 ? <Tile value={Math.round((breastMl / typedMl) * 100)} unit="%" label={t('statBreast')} /> : null}
+        {s.breastShare !== null ? <Tile value={s.breastShare} unit="%" label={t('statBreast')} /> : null}
       </div>
       <p className="stats-note" id="stats-note">{t('statsNote', { n, total: days })}</p>
     </>

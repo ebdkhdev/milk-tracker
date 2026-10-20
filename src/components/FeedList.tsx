@@ -31,13 +31,18 @@ export function FeedList({ entries, editingId, trackMilk, onEdit, onSave, onDele
                 <div className="left">
                   <span className="amt">{formatAmount(e.ml)}</span>
                   <span className="time">{formatTime(e.time)}</span>
-                  {e.type ? <span className="milk-badge">{t(e.type === 'formula' ? 'milkFormula' : 'milkBreast')}</span> : null}
                 </div>
                 <div className="actions">
                   <button className="edit" onClick={() => onEdit(e.id)}>{t('edit')}</button>
                   <button className="del" onClick={() => onDelete(e.id)}>{t('del')}</button>
                 </div>
-                {e.note ? <div className="feed-note">{e.note}</div> : null}
+                {/* type and note on a second line, so amount, time and actions keep one line */}
+                {e.type || e.note ? (
+                  <div className="feed-meta">
+                    {e.type ? <span className="milk-badge">{t(e.type === 'formula' ? 'milkFormula' : 'milkBreast')}</span> : null}
+                    {e.note ? <span className="feed-note">{e.note}</span> : null}
+                  </div>
+                ) : null}
               </li>
             ),
           )

@@ -7,6 +7,7 @@ import { DayNav } from '#/components/DayNav'
 import { FeedList } from '#/components/FeedList'
 import { Header } from '#/components/Header'
 import { InstallBanner } from '#/components/InstallBanner'
+import { Report } from '#/components/Report'
 import { Stats } from '#/components/Stats'
 import type { DayRow } from '#/components/Stats'
 import { Toast } from '#/components/Toast'
@@ -53,6 +54,8 @@ function App() {
   const [milk, setMilkState] = useState<MilkPrefs>(loadMilk)
   const [backup, setBackupState] = useState<BackupState>(loadBackupState)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
+  const reportClosed = useRef(false)
   const [viewDate, setViewDate] = useState(() => new Date())
   const [customTime, setCustomTime] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -90,6 +93,14 @@ function App() {
       navigator.serviceWorker.register('/sw.js').catch((e) => console.error('SW', e))
     }
   }, [])
+
+  // back from the report: return focus to the button that opened it
+  useEffect(() => {
+    if (reportOpen || !reportClosed.current) return
+    reportClosed.current = false
+    const btn = document.getElementById('report-btn')
+    if (btn) { btn.scrollIntoView({ block: 'center' }); btn.focus() }
+  }, [reportOpen])
 
   // before paint, so Arabic never flashes left-to-right
   useLayoutEffect(() => {
@@ -268,6 +279,18 @@ function App() {
           settingsOpen={settingsOpen}
           onSettings={() => setSettingsOpen((o) => !o)}
         />
+        {reportOpen ? (
+          <Report
+            rows={rows}
+            feeds={allFeeds}
+            baby={baby}
+            period={period}
+            avgIntervalMin={periodInterval}
+            onPeriod={setPeriod}
+            onClose={() => { reportClosed.current = true; setReportOpen(false) }}
+            onShared={() => showToast(t('copied'))}
+          />
+        ) : <>
         {settingsOpen ? (
           <BabySettings
             baby={baby}
@@ -319,8 +342,10 @@ function App() {
           onPeriod={setPeriod}
           avgIntervalMin={periodInterval}
           onOpen={(ds) => { goToDate(parseDay(ds)); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+          onReport={() => { setSettingsOpen(false); setReportOpen(true) }}
         />
         <Footer />
+        </>}
       </div>
       <Toast toast={toast} onDone={() => { clearTimeout(toastTimer.current); setToast(null) }} />
     </FormatProvider>

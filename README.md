@@ -1,6 +1,6 @@
 # Milk Tracker
 
-A small offline-first PWA to log a baby's bottle feeds: daily totals against a minimum that depends on the baby's age, time since the last bottle, 7/30-day history and stats, and a daily vitamin D check with reminder. French, English and Arabic. All data stays on the device (IndexedDB), with export/import to a file for backups. No account, no backend.
+A small offline-first PWA to log a baby's bottle feeds: daily totals against a minimum that depends on the baby's age, time since the last bottle and feeding rhythm, editable quick-add amounts, optional milk type and notes, 7/30-day history and stats, a printable summary for the paediatrician, and a daily vitamin D check with reminder. French, English and Arabic. All data stays on the device (IndexedDB), with export/import to a file for backups. No account, no backend.
 
 Built with React, TypeScript and TanStack Start (SPA mode, static output).
 
