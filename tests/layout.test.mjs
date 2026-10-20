@@ -57,6 +57,13 @@ export async function run(DIST) {
         equal(`${lang} ${w}px: top bar on one line, name not cut`, bar, { oneLine: true, brandFits: true })
       }
     }
+    // a much wider font (some Android / Linux system fonts): the name is hidden rather than cut
+    await b.ev(`document.body.style.fontFamily="Verdana, 'DejaVu Sans Mono', monospace"`)
+    for (const w of [340, 390]) {
+      await b.viewport(w, 700); await sleep(300)
+      equal(`wide font ${w}px: name not cut`, await b.ev(`(function(){var n=document.querySelector(".brand");return n.scrollWidth<=n.clientWidth+1})()`), true)
+    }
+    await b.ev(`document.body.style.fontFamily=""`); await b.viewport(320, 700); await sleep(300)
     equal('name still in the accessible text at 320px', await b.ev(`document.querySelector(".brand").textContent`), '🍼 Milk Tracker')
     equal('no JS errors', b.errors, [])
   } finally {

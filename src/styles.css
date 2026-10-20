@@ -884,10 +884,11 @@ input[type="time"], input[type="date"], input[type="number"], input[type="text"]
 
 footer { text-align: center; color: var(--label-on-bg); font-size: 0.765rem; margin-top: 30px; }
 
-/* Very narrow phones: only the bottle in the bar (the name stays in the accessible text) */
-@media (max-width: 359px) {
-  .brand-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-}
+/* inline-block so its natural width (scrollWidth) can be measured even while hidden */
+.brand-name { display: inline-block; vertical-align: bottom; }
+/* When the name doesn't fit next to the controls (measured in Header.tsx): only the bottle, the name stays
+   in the accessible text */
+header.compact .brand-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* Narrow phones: keep the bar on one line */
 @media (max-width: 380px) {
