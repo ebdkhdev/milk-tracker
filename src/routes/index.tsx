@@ -31,7 +31,7 @@ import { FormatProvider, useFormat } from '#/lib/format'
 import { RTL_LANGS, loadLang, makeT, saveLang } from '#/lib/i18n'
 import type { Lang, T, Unit } from '#/lib/i18n'
 import { notificationsAvailable, reminderIsDue, showReminderNotification } from '#/lib/reminder'
-import { BACKUP_SNOOZE_DAYS, backupDue, isDefaultQuick, loadBackupState, loadMilk, saveBackupState, loadQuick, loadReminder, loadUnit, saveMilk, saveQuick, saveReminder, saveUnit, suggestQuick } from '#/lib/settings'
+import { BACKUP_SNOOZE_DAYS, backupDue, loadDeviceName, saveDeviceName, isDefaultQuick, loadBackupState, loadMilk, saveBackupState, loadQuick, loadReminder, loadUnit, saveMilk, saveQuick, saveReminder, saveUnit, suggestQuick } from '#/lib/settings'
 import type { BackupState, MilkPrefs } from '#/lib/settings'
 import type { Reminder } from '#/lib/settings'
 
@@ -56,6 +56,7 @@ function App() {
   const [quick, setQuickState] = useState<number[]>(loadQuick)
   const [milk, setMilkState] = useState<MilkPrefs>(loadMilk)
   const [backup, setBackupState] = useState<BackupState>(loadBackupState)
+  const [deviceName, setDeviceName] = useState(loadDeviceName)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const reportClosed = useRef(false)
@@ -237,6 +238,7 @@ function App() {
     const time = viewingToday ? new Date().toISOString() : timeOnDate(dateStr, customTime || '12:00')
     const feed: Feed = { id: newId(), date: dateStr, ml: Math.round(ml * 10) / 10, time }
     if (milk.track) feed.type = milk.last
+    if (deviceName && sync.code) feed.by = deviceName
     dbAdd(feed)
       .then(bump)
       .catch((e) => console.error("Erreur d'enregistrement", e))
@@ -378,6 +380,8 @@ function App() {
                 code={sync.code}
                 status={syncStatus}
                 lastSync={sync.lastSync}
+                name={deviceName}
+                onName={(n) => { saveDeviceName(n); setDeviceName(n) }}
                 onCreate={() => createFamily().then(afterJoin(t('created')), () => t('createError'))}
                 onJoin={(code) => joinFamily(code).then((r) => (r === 'ok' ? afterJoin(t('joined'))() : t(r === 'unknown' ? 'joinUnknown' : 'joinOffline')))}
                 onSendCode={sendCode}

@@ -37,9 +37,10 @@ export function FeedList({ entries, editingId, trackMilk, onEdit, onSave, onDele
                   <button className="del" onClick={() => onDelete(e.id)}>{t('del')}</button>
                 </div>
                 {/* type and note on a second line, so amount, time and actions keep one line */}
-                {e.type || e.note ? (
+                {e.type || e.note || e.by ? (
                   <div className="feed-meta">
                     {e.type ? <span className="milk-badge">{t(e.type === 'formula' ? 'milkFormula' : 'milkBreast')}</span> : null}
+                    {e.by ? <span className="feed-by">{t('addedBy', { name: e.by })}</span> : null}
                     {e.note ? <span className="feed-note">{e.note}</span> : null}
                   </div>
                 ) : null}

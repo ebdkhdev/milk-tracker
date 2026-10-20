@@ -42,12 +42,14 @@ export async function run(DIST) {
   try {
     // Phone A: two bottles, creates the family
     await open('A')
-    for (const i of [0, 1]) { await b.click('#quick-grid button', i); await sleep(150) }
     await putOldDaily(OLD_DAY, true)
     await openSettings()
     await b.click('#share-create')
     await b.waitFor(`!!document.getElementById("share-code")`)
     const code = await b.text('#share-code')
+    await b.type('#device-name', 'Maman')
+    await sleep(100)
+    for (const i of [0, 1]) { await b.click('#quick-grid button', i); await sleep(150) }
     check('family code shown (26 characters in groups of 4)', /^([A-Z2-9]{4}-){6}[A-Z2-9]{2}$/.test(code), code)
     check('first sync sends A\'s bottles', await syncAndWait())
     equal('footer mentions sharing', await b.text('footer'), 'Données sur cet appareil, partagées avec ta famille (serveur en Europe).')
@@ -70,6 +72,7 @@ export async function run(DIST) {
     check('joined with a pasted, re-cased code', true)
     await syncAndWait()
     equal('histories merged without duplicates', await amounts(), '120 ml,60 ml,90 ml')
+    equal('who added each bottle', await b.ev(`[...document.querySelectorAll(".feed-item")].map(e=>e.querySelector(".amt").textContent+":"+((e.querySelector(".feed-by")||{}).textContent||"-")).sort().join(",")`), '120 ml:-,60 ml:par Maman,90 ml:par Maman')
     equal('same pre-sharing day on both phones converges to the family copy', await getDaily(OLD_DAY), true)
 
     // B deletes the 60 ml bottle

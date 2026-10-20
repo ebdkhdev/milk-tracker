@@ -10,7 +10,8 @@ const LEGACY_KEY = 'suivi-lait-data-v1'
 export type MilkType = 'formula' | 'breast'
 // type and note are optional: older records (and users who don't track the type) have neither.
 // updatedAt (ms) is stamped on every local write; sharing resolves conflicts with it (last write wins).
-export type Feed = { id: string; date: string; ml: number; time: string; type?: MilkType; note?: string; updatedAt?: number }
+// by: name of the parent who added it (sharing), set once on add and kept through edits
+export type Feed = { id: string; date: string; ml: number; time: string; type?: MilkType; note?: string; by?: string; updatedAt?: number }
 export type Daily = { date: string; vitaminD: boolean; vitaminDTime: string | null; updatedAt?: number }
 
 export type ChangeKind = 'feed' | 'daily' | 'baby'
@@ -229,7 +230,7 @@ function validRemote(c: Change) {
 }
 
 // Compares the meaningful fields only: Postgres jsonb does not keep key order, so JSON strings can differ.
-const FIELDS: Record<string, string[]> = { feed: ['id', 'date', 'ml', 'time', 'type', 'note'], daily: ['date', 'vitaminD', 'vitaminDTime'] }
+const FIELDS: Record<string, string[]> = { feed: ['id', 'date', 'ml', 'time', 'type', 'note', 'by'], daily: ['date', 'vitaminD', 'vitaminDTime'] }
 function sameRecord(kind: ChangeKind, a: Record<string, unknown>, b: Record<string, unknown>) {
   return (FIELDS[kind] || []).every((f) => (a[f] ?? null) === (b[f] ?? null))
 }

@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { formatTime } from '#/lib/dates'
 import { useFormat } from '#/lib/format'
+import { NAME_MAX } from '#/lib/settings'
 import type { SyncStatus } from '#/lib/sync'
 
 type Props = {
   code: string | null
   status: SyncStatus
   lastSync: string | null
+  name: string
+  onName: (name: string) => void
   onCreate: () => Promise<string | null> // error message, or null
   onJoin: (code: string) => Promise<string | null>
   onSendCode: () => void
@@ -18,7 +21,7 @@ type Props = {
 // Settings section: create or join a family; once in, show the code to give the other parent and the sync state.
 // No QR code on purpose: on iOS a scanned QR or a tapped link opens Safari, whose storage is separate from the
 // installed app, so the code is pasted inside the app instead.
-export function ShareSettings({ code, status, lastSync, onCreate, onJoin, onSendCode, onSyncNow, onLeave, onDelete }: Props) {
+export function ShareSettings({ code, status, lastSync, name, onName, onCreate, onJoin, onSendCode, onSyncNow, onLeave, onDelete }: Props) {
   const { t } = useFormat()
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -67,6 +70,20 @@ export function ShareSettings({ code, status, lastSync, onCreate, onJoin, onSend
     : lastSync ? t('syncOk', { time: formatTime(lastSync) }) : t('syncNever')
   return (
     <>
+      <label className="settings-row">
+        <span>{t('deviceName')}</span>
+        <input
+          type="text"
+          id="device-name"
+          className="device-name"
+          maxLength={NAME_MAX}
+          autoComplete="given-name"
+          defaultValue={name}
+          onBlur={(e) => onName(e.target.value.trim())}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+        />
+      </label>
+      <p className="settings-note">{t('deviceNameNote')}</p>
       <p className="share-code" id="share-code" dir="ltr">{code}</p>
       <p className="settings-note">{t('shareCodeNote')}</p>
       <p className={'share-status' + (status === 'offline' || status === 'error' ? ' warn' : '')} id="share-status" aria-live="polite">{statusText}</p>

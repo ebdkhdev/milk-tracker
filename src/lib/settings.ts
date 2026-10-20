@@ -7,6 +7,7 @@ const REMINDER_KEY = 'suivi-lait-reminder-v1'
 const QUICK_KEY = 'suivi-lait-quick-v1'
 const MILK_KEY = 'suivi-lait-milk-v1'
 const BACKUP_KEY = 'suivi-lait-backup-v1'
+const DEVICE_KEY = 'suivi-lait-device-v1'
 
 export const ML_PER_OZ = 29.5735
 export const DAILY_MIN_ML = 600 // minimum quantité de lait par jour
@@ -109,4 +110,16 @@ export function backupDue(b: BackupState, feeds: Feed[], now: Date): { days: num
   const oldest = feeds.reduce((min, f) => (f.date < min ? f.date : min), feeds[0].date)
   const [y, m, d] = oldest.split('-').map(Number)
   return now.getTime() - new Date(y, m - 1, d).getTime() >= BACKUP_FIRST_DAYS * DAY_MS ? { days: 0 } : null
+}
+
+// This parent's name, stamped on the bottles they add so the other parent sees who gave what.
+export const NAME_MAX = 20
+export function loadDeviceName(): string {
+  try { return (localStorage.getItem(DEVICE_KEY) || '').slice(0, NAME_MAX) } catch (e) { return '' }
+}
+export function saveDeviceName(name: string) {
+  try {
+    if (name) localStorage.setItem(DEVICE_KEY, name)
+    else localStorage.removeItem(DEVICE_KEY)
+  } catch (e) {}
 }

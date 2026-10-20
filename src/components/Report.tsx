@@ -65,7 +65,7 @@ export function Report({ rows, feeds, baby, period, avgIntervalMin, onPeriod, on
     })
     if (notes.length) {
       lines.push('', t('reportNotes'))
-      notes.forEach((f) => lines.push(`${shortDate(f.date)} ${formatTime(f.time)} (${formatAmount(f.ml)}) : ${f.note}`))
+      notes.forEach((f) => lines.push(`${shortDate(f.date)} ${formatTime(f.time)} (${formatAmount(f.ml)}${f.by ? ', ' + f.by : ''}) : ${f.note}`))
     }
     return lines.join('\n')
   }
@@ -144,7 +144,7 @@ export function Report({ rows, feeds, baby, period, avgIntervalMin, onPeriod, on
             <ul className="report-notes">
               {notes.map((f) => (
                 <li key={f.id}>
-                  <span className="report-note-when">{shortDate(f.date)} {formatTime(f.time)} · {formatAmount(f.ml)}</span> {f.note}
+                  <span className="report-note-when">{shortDate(f.date)} {formatTime(f.time)} · {formatAmount(f.ml)}{f.by ? ' · ' + f.by : ''}</span> {f.note}
                 </li>
               ))}
             </ul>

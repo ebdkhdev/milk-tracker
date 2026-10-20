@@ -575,6 +575,8 @@ input[type="time"], input[type="date"], input[type="number"], input[type="text"]
 .feed-item .time { white-space: nowrap; color: var(--label-2); font-size: 0.941rem; font-variant-numeric: tabular-nums; }
 .milk-badge { font-size: 0.706rem; font-weight: 600; color: var(--label-2); background: var(--fill); border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
 .feed-meta { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding-inline-end: var(--gutter); padding-bottom: 12px; margin-top: -8px; }
+.feed-by { font-size: 0.765rem; color: var(--label-2); }
+.device-name { width: 9rem; text-align: end; }
 .feed-note { font-size: 0.882rem; color: var(--label-2); overflow-wrap: anywhere; min-width: 0; }
 .feed-edit .feed-note-input { flex: 1 1 100%; min-width: 0; }
 .feed-edit .milk-toggle { flex-shrink: 0; }
