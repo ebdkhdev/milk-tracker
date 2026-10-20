@@ -11,6 +11,17 @@ const SUITES = ['api', 'push', 'growth', 'app', 'backup', 'baby', 'settings', 'r
 if (!existsSync(DIST + '/index.html')) { console.error('dist/client is missing: run npm run build first'); process.exit(1) }
 if (!findChrome()) { console.error('Chrome not found: set CHROME_PATH'); process.exit(1) }
 
+// An exception outside a suite (e.g. in the test server's request handler) would end the process without a
+// summary: report it like a failed check, as an annotation on GitHub, then exit non-zero.
+for (const event of ['uncaughtException', 'unhandledRejection']) {
+  process.on(event, (e) => {
+    const text = String((e && e.stack) || e)
+    console.log(`\n✗ ${event}: ${text}`)
+    if (process.env.GITHUB_ACTIONS) console.log(`::error title=${event}::${text.replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`)
+    process.exit(1)
+  })
+}
+
 const only = process.argv.slice(2)
 for (const name of only.length ? only : SUITES) {
   const mod = await import(`./${name}.test.mjs`)
