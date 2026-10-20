@@ -12,7 +12,7 @@ const CHUNK = 500 // matches MAX_CHANGES on the server
 export type SyncState = { code: string | null; cursor: number; lastSync: string | null }
 // 'gone': the family was deleted (from the other phone); the app then stops sharing
 export type SyncStatus = 'idle' | 'syncing' | 'ok' | 'offline' | 'error' | 'gone'
-export type SyncResult = { status: SyncStatus; applied: number; baby: Change | null }
+export type SyncResult = { status: SyncStatus; applied: number; baby: Change | null; profiles: Change[] }
 
 export function loadSync(): SyncState {
   try {
@@ -105,29 +105,31 @@ export function syncNow(): Promise<SyncResult> {
 
 async function doSync(): Promise<SyncResult> {
   let state = loadSync()
-  if (!state.code) return { status: 'idle', applied: 0, baby: null }
+  if (!state.code) return { status: 'idle', applied: 0, baby: null, profiles: [] }
   let applied = 0
   let baby: Change | null = null
+  const profiles: Change[] = []
   try {
     for (let round = 0; round < 50; round++) {
       const outbox = (await dbOutbox()).slice(0, CHUNK)
       const changes: Change[] = outbox.map(({ kind, key, data, deleted, updatedAt }) => ({ kind, key, data, deleted, updatedAt }))
       const { status, json } = await post({ action: 'sync', since: state.cursor, changes }, state.code!)
-      if (status === 404) return { status: 'gone', applied, baby }
-      if (status !== 200) return { status: 'error', applied, baby }
+      if (status === 404) return { status: 'gone', applied, baby, profiles }
+      if (status !== 200) return { status: 'error', applied, baby, profiles }
       await dbAckOutbox(changes)
       const r = await dbApplyRemote(json.changes || [])
       applied += r.applied
       if (r.baby && (!baby || baby.updatedAt < r.baby.updatedAt)) baby = r.baby
+      profiles.push(...r.profiles)
       // the user may have left the family while this request was in flight
-      if (!loadSync().code) return { status: 'idle', applied, baby: null }
+      if (!loadSync().code) return { status: 'idle', applied, baby: null, profiles: [] }
       state = { ...state, cursor: Number(json.cursor) || state.cursor, lastSync: new Date().toISOString() }
       saveSync(state)
-      if (!json.more && (await dbOutbox()).length === 0) return { status: 'ok', applied, baby }
+      if (!json.more && (await dbOutbox()).length === 0) return { status: 'ok', applied, baby, profiles }
     }
-    return { status: 'ok', applied, baby }
+    return { status: 'ok', applied, baby, profiles }
   } catch (e) {
     // network failure: everything stays queued for the next attempt
-    return { status: 'offline', applied, baby }
+    return { status: 'offline', applied, baby, profiles }
   }
 }

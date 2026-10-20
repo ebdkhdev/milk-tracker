@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { sanitizeBaby } from '#/lib/baby'
 import type { Baby } from '#/lib/baby'
+import type { Change } from '#/lib/db'
 import type { T } from '#/lib/i18n'
 import { createFamily, deleteFamily, formatCode, initSync, joinFamily, leaveFamily, loadSync, syncNow } from '#/lib/sync'
 import type { SyncStatus } from '#/lib/sync'
@@ -11,19 +12,20 @@ type Options = {
   showToast: (text: string) => void
   onRemoteData: () => void // records changed by the other phone: reload
   onRemoteBaby: (b: Baby) => void // baby settings changed by the other phone (store locally, don't queue)
+  onRemoteProfiles: (changes: Change[]) => void // babies' profiles changed by the other phone
   shareBaby: (updatedAt: number) => void // queue this phone's baby settings
   hasBirthDate: boolean
 }
 
 // Family sharing state and actions (lib/sync.ts does the work). One sync at a time; local writes schedule
 // one 1.5 s later (several taps -> one request); also on start, foreground, online and every minute.
-export function useSharing({ ready, t, showToast, onRemoteData, onRemoteBaby, shareBaby, hasBirthDate }: Options) {
+export function useSharing({ ready, t, showToast, onRemoteData, onRemoteBaby, onRemoteProfiles, shareBaby, hasBirthDate }: Options) {
   const [sync, setSyncState] = useState(loadSync)
   const [status, setStatus] = useState<SyncStatus>('idle')
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   // runSync is stable; it reaches the latest callbacks and texts through this ref
-  const latest = useRef({ t, showToast, onRemoteData, onRemoteBaby })
-  latest.current = { t, showToast, onRemoteData, onRemoteBaby }
+  const latest = useRef({ t, showToast, onRemoteData, onRemoteBaby, onRemoteProfiles })
+  latest.current = { t, showToast, onRemoteData, onRemoteBaby, onRemoteProfiles }
 
   const stopped = useCallback((message: string) => {
     setSyncState(loadSync())
@@ -40,6 +42,7 @@ export function useSharing({ ready, t, showToast, onRemoteData, onRemoteBaby, sh
       setStatus(r.status)
       setSyncState(loadSync())
       if (r.baby && r.baby.data) latest.current.onRemoteBaby(sanitizeBaby(r.baby.data))
+      if (r.profiles.length) latest.current.onRemoteProfiles(r.profiles)
       if (r.applied) latest.current.onRemoteData()
     })
   }, [stopped])

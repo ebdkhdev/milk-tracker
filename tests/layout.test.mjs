@@ -4,7 +4,7 @@ import { check, equal, suite } from './lib/assert.mjs'
 
 // Controls that are visually smaller than 44 pt on purpose (iOS segmented controls and switch);
 // they still must reach Apple's 28 pt minimum.
-const SMALL_OK = ['#unit-ml', '#unit-oz', '#period-7', '#period-30', '#reminder-enabled', '#track-milk']
+const SMALL_OK = ['#unit-ml', '#unit-oz', '#period-7', '#period-30', '#reminder-enabled', '#track-milk', '#sex-f', '#sex-m']
 
 export async function run(DIST) {
   suite('Layout: touch targets, text size, narrow screens')

@@ -243,7 +243,7 @@ header::before {
 
 /* Liquid Glass capsules: the three header controls only (after the base control rules so they win).
    The ⚙ button keeps its tinted fill when the panel is open: the one coloured control in the bar. */
-.lang-select, header .unit-toggle, .settings-btn:not(.active) {
+.lang-select, .baby-select, header .unit-toggle, .settings-btn:not(.active) {
   background: var(--glass);
   -webkit-backdrop-filter: blur(16px) saturate(1.6);
   backdrop-filter: blur(16px) saturate(1.6);
@@ -251,11 +251,11 @@ header::before {
 }
 @media (prefers-reduced-transparency: reduce) {
   header::before { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; -webkit-mask-image: none; mask-image: none; inset: 0; box-shadow: 0 0.5px 0 var(--separator); }
-  .lang-select, header .unit-toggle, .settings-btn:not(.active) { background: var(--fill); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+  .lang-select, .baby-select, header .unit-toggle, .settings-btn:not(.active) { background: var(--fill); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
 }
 @media (prefers-contrast: more) {
   header::before { background: var(--bg); -webkit-mask-image: none; mask-image: none; inset: 0; box-shadow: 0 1px 0 var(--separator); }
-  .lang-select, header .unit-toggle, .settings-btn:not(.active) { background: var(--surface); box-shadow: inset 0 0 0 1px var(--separator); }
+  .lang-select, .baby-select, header .unit-toggle, .settings-btn:not(.active) { background: var(--surface); box-shadow: inset 0 0 0 1px var(--separator); }
 }
 header .unit-toggle, header .unit-toggle button { border-radius: 999px; }
 
@@ -577,6 +577,8 @@ input[type="time"], input[type="date"], input[type="number"], input[type="text"]
 .feed-meta { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding-inline-end: var(--gutter); padding-bottom: 12px; margin-top: -8px; }
 .feed-by { font-size: 0.765rem; color: var(--label-2); }
 .device-name { width: 9rem; text-align: end; }
+/* baby selector in the top bar (two babies or more): the name in a glass capsule, cut with an ellipsis if long */
+.baby-select { appearance: none; -webkit-appearance: none; border: none; border-radius: 999px; min-height: 44px; padding: 0 14px; font-weight: 600; max-width: 100%; min-width: 0; text-overflow: ellipsis; color: var(--label); }
 .feed-note { font-size: 0.882rem; color: var(--label-2); overflow-wrap: anywhere; min-width: 0; }
 .feed-edit .feed-note-input { flex: 1 1 100%; min-width: 0; }
 .feed-edit .milk-toggle { flex-shrink: 0; }

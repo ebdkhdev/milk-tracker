@@ -1,5 +1,6 @@
-import { DEFAULT_TIERS_ML, TIER_STARTS, formatAge, tierIndexFor } from '#/lib/baby'
-import type { Baby } from '#/lib/baby'
+import { useState } from 'react'
+import { DEFAULT_TIERS_ML, FIRST_BABY, NAME_MAX_BABY, TIER_STARTS, formatAge, tierIndexFor } from '#/lib/baby'
+import type { Baby, BabyInfo, Sex } from '#/lib/baby'
 import { todayStr } from '#/lib/dates'
 import { useFormat } from '#/lib/format'
 import { DAILY_MIN_ML, MAX_FEED_ML, QUICK_AMOUNTS_ML } from '#/lib/settings'
@@ -7,8 +8,12 @@ import type { MilkPrefs } from '#/lib/settings'
 import type { ReactNode } from 'react'
 
 type Props = {
-  baby: Baby
-  onChange: (b: Baby) => void
+  baby: BabyInfo // the selected baby
+  onChange: (b: Baby) => void // its birth date / age bands
+  babies: BabyInfo[]
+  onProfile: (name: string, sex: Sex) => void
+  onAddBaby: () => void
+  onRemoveBaby: () => void // the selected baby (never the first one)
   quick: number[]
   quickSuggestion: number[] | null
   onQuick: (q: number[]) => void
@@ -22,7 +27,7 @@ type Props = {
   onImport: (file: File) => void
 }
 
-export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, milk, onMilk, shared, share, notifications, onClose, onExport, onImport }: Props) {
+export function BabySettings({ baby, onChange, babies, onProfile, onAddBaby, onRemoveBaby, quick, quickSuggestion, onQuick, milk, onMilk, shared, share, notifications, onClose, onExport, onImport }: Props) {
   const { t, unitLabel, mlToDisplay, displayToMl, formatAmount } = useFormat()
   const today = todayStr(new Date())
   const current = tierIndexFor(baby, today)
@@ -53,7 +58,31 @@ export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, 
         <button className="settings-close" id="settings-close" onClick={onClose}>{t('close')}</button>
       </div>
 
-      <p className="settings-sub settings-sub-first">{t('babyTitle')}</p>
+      <p className="settings-sub settings-sub-first">{babies.length > 1 && baby.name ? baby.name : t('babyTitle')}</p>
+      <label className="settings-row">
+        <span>{t('babyName')}</span>
+        <input
+          type="text"
+          id="baby-name"
+          className="device-name"
+          key={'name-' + baby.id}
+          maxLength={NAME_MAX_BABY}
+          defaultValue={baby.name}
+          onBlur={(e) => { if (e.target.value.trim() !== baby.name) onProfile(e.target.value.trim(), baby.sex) }}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+        />
+      </label>
+      <div className="settings-row">
+        <span id="sex-label">{t('sex')}</span>
+        {/* tapping the selected value again clears it (sex is only used for the growth curves) */}
+        <div className="milk-toggle" role="group" aria-labelledby="sex-label">
+          {(['f', 'm'] as const).map((x) => (
+            <button key={x} type="button" id={'sex-' + x} className={baby.sex === x ? 'active' : ''} aria-pressed={baby.sex === x} onClick={() => onProfile(baby.name, baby.sex === x ? null : x)}>
+              {t(x === 'f' ? 'girl' : 'boy')}
+            </button>
+          ))}
+        </div>
+      </div>
       <label className="settings-row">
         <span>{t('birthDate')}</span>
         <span className="settings-birth">
@@ -106,6 +135,8 @@ export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, 
       >
         {t('resetTiers')}
       </button>
+
+      <BabiesManager baby={baby} onAdd={onAddBaby} onRemove={onRemoveBaby} />
 
       <p className="settings-sub">{t('quickAdd')}</p>
       <div className="quick-edit" id="quick-edit">
@@ -178,5 +209,31 @@ export function BabySettings({ baby, onChange, quick, quickSuggestion, onQuick, 
       </div>
       <p className="settings-note">{t(shared ? 'dataNoteShared' : 'dataNote')}</p>
     </section>
+  )
+}
+
+// Add a baby (twins, a second child), or remove the selected one after an explicit second step.
+function BabiesManager({ baby, onAdd, onRemove }: { baby: BabyInfo; onAdd: () => void; onRemove: () => void }) {
+  const { t } = useFormat()
+  const [confirm, setConfirm] = useState(false)
+  const name = baby.name || t('babyTitle')
+  return (
+    <>
+      <div className="settings-actions">
+        <button className="settings-reset" id="add-baby" onClick={onAdd}>{t('addBaby')}</button>
+        {baby.id !== FIRST_BABY && !confirm ? (
+          <button className="settings-reset share-leave" id="remove-baby" onClick={() => setConfirm(true)}>{t('removeBaby', { name })}</button>
+        ) : null}
+      </div>
+      {confirm ? (
+        <div className="share-confirm" id="remove-baby-confirm">
+          <p>{t('removeBabyConfirm', { name })}</p>
+          <div className="data-row">
+            <button className="data-btn danger" id="remove-baby-yes" onClick={() => { setConfirm(false); onRemove() }}>{t('removeBabyYes')}</button>
+            <button className="data-btn" id="remove-baby-no" onClick={() => setConfirm(false)}>{t('cancel')}</button>
+          </div>
+        </div>
+      ) : null}
+    </>
   )
 }

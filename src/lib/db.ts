@@ -1,20 +1,28 @@
 // IndexedDB layer. Names must stay as they are: existing users' data lives here. Bump DB_VERSION for any
 // schema change and keep earlier versions upgradable in onupgradeneeded.
 const DB_NAME = 'suivi-lait-db'
-const DB_VERSION = 3
+const DB_VERSION = 4
 const STORE = 'feeds'
 const DAILY_STORE = 'daily'
 const OUTBOX = 'outbox' // v3: changes waiting to be sent to the family (sharing only)
+const DAYS = 'days' // v4: per-day facts of the babies other than the first ("daily" stays the first baby's)
+const EVENTS = 'events' // v4: diapers, sleep and growth measurements, any baby
+const FIRST_BABY = 'b1' // records without babyId belong to it (see lib/baby.ts)
 const LEGACY_KEY = 'suivi-lait-data-v1'
 
 export type MilkType = 'formula' | 'breast'
 // type and note are optional: older records (and users who don't track the type) have neither.
 // updatedAt (ms) is stamped on every local write; sharing resolves conflicts with it (last write wins).
 // by: name of the parent who added it (sharing), set once on add and kept through edits
-export type Feed = { id: string; date: string; ml: number; time: string; type?: MilkType; note?: string; by?: string; updatedAt?: number }
+// babyId: absent for the first baby (records from before several babies existed stay untouched)
+export type Feed = { id: string; date: string; ml: number; time: string; type?: MilkType; note?: string; by?: string; babyId?: string; updatedAt?: number }
 export type Daily = { date: string; vitaminD: boolean; vitaminDTime: string | null; updatedAt?: number }
+// a Daily for another baby: id = babyId + "|" + date
+export type Day = Daily & { id: string; babyId: string }
+export type EventRecord = { id: string; babyId?: string; type: string; date: string; time: string; updatedAt?: number; [k: string]: unknown }
 
-export type ChangeKind = 'feed' | 'daily' | 'baby'
+// feed/daily/baby: the first baby (as in v2.6+); bfeed/day/profile/event: added in v2.9, ignored by older apps
+export type ChangeKind = 'feed' | 'daily' | 'baby' | 'bfeed' | 'day' | 'profile' | 'event'
 export type Change = { kind: ChangeKind; key: string; data: object | null; deleted: boolean; updatedAt: number }
 type OutboxEntry = Change & { k: string }
 
@@ -44,6 +52,12 @@ function openDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(OUTBOX)) {
         db.createObjectStore(OUTBOX, { keyPath: 'k' })
+      }
+      if (!db.objectStoreNames.contains(DAYS)) {
+        db.createObjectStore(DAYS, { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains(EVENTS)) {
+        db.createObjectStore(EVENTS, { keyPath: 'id' }).createIndex('by_date', 'date', { unique: false })
       }
     }
     req.onsuccess = () => {
@@ -86,8 +100,11 @@ function read<R>(storeName: string, op: (store: IDBObjectStore) => IDBRequest): 
   )
 }
 
-const feedChange = (f: Feed): Change => ({ kind: 'feed', key: f.id, data: f, deleted: false, updatedAt: f.updatedAt || 0 })
+const feedKind = (babyId?: string) => (babyId && babyId !== FIRST_BABY ? 'bfeed' : 'feed')
+const feedChange = (f: Feed): Change => ({ kind: feedKind(f.babyId), key: f.id, data: f, deleted: false, updatedAt: f.updatedAt || 0 })
 const dailyChange = (d: Daily): Change => ({ kind: 'daily', key: d.date, data: d, deleted: false, updatedAt: d.updatedAt || 0 })
+const dayChange = (d: Day): Change => ({ kind: 'day', key: d.id, data: d, deleted: false, updatedAt: d.updatedAt || 0 })
+const eventChange = (e: EventRecord): Change => ({ kind: 'event', key: e.id, data: e, deleted: false, updatedAt: e.updatedAt || 0 })
 
 // Every local write is stamped now, so an undo (re-putting a deleted bottle) wins over its deletion.
 export const dbAdd = (entry: Feed) => {
@@ -98,8 +115,8 @@ export const dbPut = (entry: Feed) => {
   const f = { ...entry, updatedAt: Date.now() }
   return write(STORE, (s) => { s.put(f); return [feedChange(f)] })
 }
-export const dbDelete = (id: string) =>
-  write(STORE, (s) => { s.delete(id); return [{ kind: 'feed', key: id, data: null, deleted: true, updatedAt: Date.now() }] })
+export const dbDelete = (id: string, babyId?: string) =>
+  write(STORE, (s) => { s.delete(id); return [{ kind: feedKind(babyId), key: id, data: null, deleted: true, updatedAt: Date.now() }] })
 export const dbGetByDate = (date: string) =>
   read<Feed[]>(STORE, (s) => s.index('by_date').getAll(IDBKeyRange.only(date))).then((r) => r || [])
 export const dbGetAll = () => read<Feed[]>(STORE, (s) => s.getAll()).then((r) => r || [])
@@ -111,6 +128,20 @@ export const dbPutDaily = (record: Daily) => {
   return write(DAILY_STORE, (s) => { s.put(d); return [dailyChange(d)] })
 }
 export const dbGetAllDaily = () => read<Daily[]>(DAILY_STORE, (s) => s.getAll()).then((r) => r || [])
+export const dbGetAllDays = () => read<Day[]>(DAYS, (s) => s.getAll()).then((r) => r || [])
+export const dbPutDay = (record: Day) => {
+  const d = { ...record, updatedAt: Date.now() }
+  return write(DAYS, (s) => { s.put(d); return [dayChange(d)] })
+}
+export const dbDeleteDay = (id: string) =>
+  write(DAYS, (s) => { s.delete(id); return [{ kind: 'day', key: id, data: null, deleted: true, updatedAt: Date.now() }] })
+export const dbGetAllEvents = () => read<EventRecord[]>(EVENTS, (s) => s.getAll()).then((r) => r || [])
+export const dbPutEvent = (record: EventRecord) => {
+  const e = { ...record, updatedAt: Date.now() }
+  return write(EVENTS, (s) => { s.put(e); return [eventChange(e)] })
+}
+export const dbDeleteEvent = (id: string) =>
+  write(EVENTS, (s) => { s.delete(id); return [{ kind: 'event', key: id, data: null, deleted: true, updatedAt: Date.now() }] })
 
 // Queues a change that has no IndexedDB record of its own (the shared baby settings).
 export function dbQueue(c: Change): Promise<void> {
@@ -121,11 +152,12 @@ export function dbQueue(c: Change): Promise<void> {
 // Import from a backup, in one transaction over both stores. A record already on this device is kept unless
 // the file's copy is newer (updatedAt), so an old backup never overwrites more recent edits; records it adds
 // keep the file's timestamp (0 when it has none), so they never win over a deletion made elsewhere.
-export function dbImport(feeds: Feed[], daily: Daily[]): Promise<void> {
+export function dbImport(feeds: Feed[], daily: Daily[], days: Day[] = [], events: EventRecord[] = []): Promise<void> {
   return openDb().then(
     (db) =>
       new Promise((resolve, reject) => {
-        const tx = db.transaction(queueing ? [STORE, DAILY_STORE, OUTBOX] : [STORE, DAILY_STORE], 'readwrite')
+        const stores = [STORE, DAILY_STORE, DAYS, EVENTS]
+        const tx = db.transaction(queueing ? [...stores, OUTBOX] : stores, 'readwrite')
         let queued = 0
         const merge = <T extends { updatedAt?: number }>(store: IDBObjectStore, rec: T, key: string, change: (r: T) => Change) => {
           const get = store.get(key)
@@ -140,6 +172,8 @@ export function dbImport(feeds: Feed[], daily: Daily[]): Promise<void> {
         const fs = tx.objectStore(STORE), ds = tx.objectStore(DAILY_STORE)
         feeds.forEach((f) => merge(fs, f, f.id, feedChange))
         daily.forEach((d) => merge(ds, d, d.date, dailyChange))
+        days.forEach((d) => merge(tx.objectStore(DAYS), d, d.id, dayChange))
+        events.forEach((e) => merge(tx.objectStore(EVENTS), e, e.id, eventChange))
         tx.oncomplete = () => { if (queued) queuedListener(); resolve() }
         tx.onerror = () => reject(tx.error)
       }),
@@ -153,12 +187,16 @@ export function dbQueueAll(): Promise<void> {
   return openDb().then(
     (db) =>
       new Promise((resolve, reject) => {
-        const tx = db.transaction([STORE, DAILY_STORE, OUTBOX], 'readwrite')
+        const tx = db.transaction([STORE, DAILY_STORE, DAYS, EVENTS, OUTBOX], 'readwrite')
         const out = tx.objectStore(OUTBOX)
-        const feeds = tx.objectStore(STORE).getAll()
-        feeds.onsuccess = () => (feeds.result as Feed[]).forEach((f) => out.put(queueEntry(feedChange(f))))
-        const daily = tx.objectStore(DAILY_STORE).getAll()
-        daily.onsuccess = () => (daily.result as Daily[]).forEach((d) => out.put(queueEntry(dailyChange(d))))
+        const all = <T>(store: string, change: (r: T) => Change) => {
+          const req = tx.objectStore(store).getAll()
+          req.onsuccess = () => (req.result as T[]).forEach((r) => out.put(queueEntry(change(r))))
+        }
+        all<Feed>(STORE, feedChange)
+        all<Daily>(DAILY_STORE, dailyChange)
+        all<Day>(DAYS, dayChange)
+        all<EventRecord>(EVENTS, eventChange)
         tx.oncomplete = () => resolve()
         tx.onerror = () => reject(tx.error)
       }),
@@ -190,18 +228,23 @@ export function dbAckOutbox(sent: Change[]): Promise<void> {
 // kept (its own change is still in the outbox). On equal timestamps the server's copy wins, because the server
 // kept it over ours: this is what makes two phones converge when both had the same record before sharing
 // (every pre-sharing record has updatedAt 0). Identical content (our own echo) is not rewritten.
-// Returns the number of records changed and the latest baby settings received, if any.
-export function dbApplyRemote(changes: Change[]): Promise<{ applied: number; baby: Change | null }> {
+// Returns the number of records changed, the latest baby settings received, if any, and the profiles
+// (other babies, names) received, which live in localStorage and are applied by the caller.
+const STORE_OF: Record<string, string> = { feed: STORE, bfeed: STORE, daily: DAILY_STORE, day: DAYS, event: EVENTS }
+export function dbApplyRemote(changes: Change[]): Promise<{ applied: number; baby: Change | null; profiles: Change[] }> {
   return openDb().then(
     (db) =>
       new Promise((resolve, reject) => {
-        const tx = db.transaction([STORE, DAILY_STORE], 'readwrite')
+        const tx = db.transaction([STORE, DAILY_STORE, DAYS, EVENTS], 'readwrite')
         let applied = 0
         let baby: Change | null = null
+        const profiles: Change[] = []
         for (const c of changes) {
           if (c.kind === 'baby') { if (!c.deleted && (!baby || baby.updatedAt < c.updatedAt)) baby = c; continue }
+          if (c.kind === 'profile') { profiles.push(c); continue }
+          if (!STORE_OF[c.kind]) continue // a kind from a newer version of the app
           if (!c.deleted && !validRemote(c)) continue
-          const store = tx.objectStore(c.kind === 'feed' ? STORE : DAILY_STORE)
+          const store = tx.objectStore(STORE_OF[c.kind])
           const get = store.get(c.key)
           get.onsuccess = () => {
             const local = get.result as Record<string, unknown> | undefined
@@ -214,7 +257,7 @@ export function dbApplyRemote(changes: Change[]): Promise<{ applied: number; bab
             else { store.put({ ...(c.data as object), updatedAt: c.updatedAt }); applied++ }
           }
         }
-        tx.oncomplete = () => resolve({ applied, baby })
+        tx.oncomplete = () => resolve({ applied, baby, profiles })
         tx.onerror = () => reject(tx.error)
       }),
   )
@@ -225,14 +268,25 @@ const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 function validRemote(c: Change) {
   const d = c.data as Record<string, unknown> | null
   if (!d) return false
-  if (c.kind === 'feed') return d.id === c.key && typeof d.date === 'string' && DAY_RE.test(d.date) && Number(d.ml) > 0 && typeof d.time === 'string' && !isNaN(Date.parse(d.time))
-  return d.date === c.key && typeof d.vitaminD === 'boolean'
+  const day = typeof d.date === 'string' && DAY_RE.test(d.date)
+  const time = typeof d.time === 'string' && !isNaN(Date.parse(d.time))
+  if (c.kind === 'feed') return d.id === c.key && day && Number(d.ml) > 0 && time && !d.babyId
+  if (c.kind === 'bfeed') return d.id === c.key && day && Number(d.ml) > 0 && time && typeof d.babyId === 'string' && d.babyId !== FIRST_BABY
+  if (c.kind === 'daily') return d.date === c.key && typeof d.vitaminD === 'boolean'
+  if (c.kind === 'day') return d.id === c.key && typeof d.babyId === 'string' && c.key === d.babyId + '|' + d.date && typeof d.vitaminD === 'boolean'
+  if (c.kind === 'event') return d.id === c.key && day && time && typeof d.type === 'string'
+  return false
 }
 
 // Compares the meaningful fields only: Postgres jsonb does not keep key order, so JSON strings can differ.
-const FIELDS: Record<string, string[]> = { feed: ['id', 'date', 'ml', 'time', 'type', 'note', 'by'], daily: ['date', 'vitaminD', 'vitaminDTime'] }
+const FEED_FIELDS = ['id', 'date', 'ml', 'time', 'type', 'note', 'by', 'babyId']
+const FIELDS: Record<string, string[]> = {
+  feed: FEED_FIELDS, bfeed: FEED_FIELDS, daily: ['date', 'vitaminD', 'vitaminDTime'], day: ['id', 'babyId', 'date', 'vitaminD', 'vitaminDTime'],
+}
 function sameRecord(kind: ChangeKind, a: Record<string, unknown>, b: Record<string, unknown>) {
-  return (FIELDS[kind] || []).every((f) => (a[f] ?? null) === (b[f] ?? null))
+  // events carry type-specific fields: compare all of them, key-order independent
+  const fields = FIELDS[kind] || [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((f) => f !== 'updatedAt')
+  return fields.every((f) => (a[f] ?? null) === (b[f] ?? null))
 }
 
 export function newId() {

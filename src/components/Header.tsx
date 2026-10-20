@@ -2,14 +2,31 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import type { Lang, Unit } from '#/lib/i18n'
 import { useFormat } from '#/lib/format'
 
-type Props = { onLang: (l: Lang) => void; onUnit: (u: Unit) => void; settingsOpen: boolean; onSettings: () => void }
+type Props = {
+  babies: { id: string; name: string }[] | null // shown as a selector only once there are two or more
+  currentBaby: string
+  onBaby: (id: string) => void
+  onLang: (l: Lang) => void
+  onUnit: (u: Unit) => void
+  settingsOpen: boolean
+  onSettings: () => void
+}
 
-export function Header({ onLang, onUnit, settingsOpen, onSettings }: Props) {
+export function Header({ babies, currentBaby, onBaby, onLang, onUnit, settingsOpen, onSettings }: Props) {
   const { t, lang, unit } = useFormat()
   const compact = useCompactBrand(lang)
   return (
     <header ref={compact.ref} className={compact.on ? 'compact' : undefined}>
-      <div className="brand"><span className="brand-icon">🍼</span> <span className="brand-name">Milk Tracker</span></div>
+      <div className="brand">
+        <span className="brand-icon">🍼</span>{' '}
+        {babies ? (
+          <select id="baby-select" className="baby-select" aria-label={t('babySelect')} value={currentBaby} onChange={(e) => onBaby(e.target.value)}>
+            {babies.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        ) : (
+          <span className="brand-name">Milk Tracker</span>
+        )}
+      </div>
       <div className="header-controls">
         <select
           id="lang-select"

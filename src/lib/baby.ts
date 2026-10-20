@@ -64,3 +64,60 @@ export function formatAge(t: T, birthDate: string, dateStr: string) {
   const days = Math.max(0, ageInDays(birthDate, dateStr))
   return days >= 7 ? t('ageWeeks', { n: Math.floor(days / 7) }) : t('ageDays', { n: days })
 }
+
+// ---- Several babies ----
+// The first baby ("b1") keeps everything it had before: its settings above (kind "baby" when shared) and its
+// records without a babyId. Names and sex, for every baby, and the other babies' settings live in profiles
+// (kind "profile"), which older versions of the app never read or write.
+export const FIRST_BABY = 'b1'
+const PROFILES_KEY = 'suivi-lait-babies-v1'
+const CURRENT_KEY = 'suivi-lait-current-baby-v1'
+
+export type Sex = 'f' | 'm' | null
+// updatedAt: last change (ms), so an older copy from the other phone never overwrites a newer one
+export type Profile = { id: string; name: string; sex: Sex; birthDate: string | null; tiersMl: number[]; updatedAt?: number }
+export type BabyInfo = Baby & { id: string; name: string; sex: Sex }
+
+export const NAME_MAX_BABY = 20
+const ID_RE = /^[\w.-]{1,64}$/
+export const babyOf = (r: { babyId?: string }) => r.babyId || FIRST_BABY
+
+export function sanitizeProfile(p: unknown, id: string): Profile {
+  const o = (p && typeof p === 'object' ? p : {}) as Record<string, unknown>
+  const b = sanitizeBaby(o)
+  return {
+    id,
+    name: typeof o.name === 'string' ? o.name.trim().slice(0, NAME_MAX_BABY) : '',
+    sex: o.sex === 'f' || o.sex === 'm' ? o.sex : null,
+    birthDate: b.birthDate,
+    tiersMl: b.tiersMl,
+    ...(Number(o.updatedAt) > 0 ? { updatedAt: Number(o.updatedAt) } : {}),
+  }
+}
+
+// Always contains the first baby's profile (name and sex only matter for it).
+export function loadProfiles(): Profile[] {
+  let list: Profile[] = []
+  try {
+    const raw = JSON.parse(localStorage.getItem(PROFILES_KEY) || '[]')
+    if (Array.isArray(raw)) list = raw.filter((p) => p && typeof p.id === 'string' && ID_RE.test(p.id)).map((p) => sanitizeProfile(p, p.id))
+  } catch (e) {}
+  if (!list.some((p) => p.id === FIRST_BABY)) list.unshift(sanitizeProfile(null, FIRST_BABY))
+  return list
+}
+export function saveProfiles(list: Profile[]) {
+  try { localStorage.setItem(PROFILES_KEY, JSON.stringify(list)) } catch (e) {}
+}
+
+// Every baby with its settings: the first one from its own settings, the others from their profile.
+export function babyList(first: Baby, profiles: Profile[]): BabyInfo[] {
+  return profiles.map((p) => (p.id === FIRST_BABY ? { ...first, id: p.id, name: p.name, sex: p.sex } : { ...p }))
+}
+
+export function loadCurrentBaby(): string {
+  try { return localStorage.getItem(CURRENT_KEY) || FIRST_BABY } catch (e) { return FIRST_BABY }
+}
+export function saveCurrentBaby(id: string) {
+  try { localStorage.setItem(CURRENT_KEY, id) } catch (e) {}
+}
+export const newBabyId = () => 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5)
