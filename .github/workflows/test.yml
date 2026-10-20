@@ -1,0 +1,20 @@
+# Runs the end-to-end suite (npm test) on every push and pull request, in the runner's Chrome.
+name: Tests
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the upgrade test needs the v1.0.0 tag
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test

@@ -31,7 +31,9 @@ export async function launch({ profile } = {}) {
   const chrome = findChrome()
   if (!chrome) throw new Error('Chrome not found: set CHROME_PATH')
   const dir = profile || mkdtempSync(join(tmpdir(), 'milk-tracker-test-'))
-  const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--no-first-run', `--remote-debugging-port=${DEBUG_PORT}`, `--user-data-dir=${dir}`, 'about:blank'], { stdio: 'ignore' })
+  // CI runners (Ubuntu 24.04) block the namespaces Chrome's sandbox needs
+  const extra = process.env.CI ? ['--no-sandbox'] : []
+  const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--no-first-run', ...extra, `--remote-debugging-port=${DEBUG_PORT}`, `--user-data-dir=${dir}`, 'about:blank'], { stdio: 'ignore' })
   const exited = new Promise((r) => proc.on('exit', r))
   let tabs
   for (let i = 0; i < 40 && !tabs; i++) {
