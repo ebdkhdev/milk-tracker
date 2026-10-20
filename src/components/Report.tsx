@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { formatAge } from '#/lib/baby'
-import type { Baby } from '#/lib/baby'
+import type { BabyInfo } from '#/lib/baby'
+import { ageMonths, percentile } from '#/lib/growth'
 import { formatTime, parseDay, todayStr } from '#/lib/dates'
-import type { Feed } from '#/lib/db'
+import type { EventRecord, Feed } from '#/lib/db'
 import { useFormat } from '#/lib/format'
 import { formatHM, summarize } from '#/components/Stats'
 import type { DayRow } from '#/components/Stats'
@@ -10,7 +11,8 @@ import type { DayRow } from '#/components/Stats'
 type Props = {
   rows: DayRow[] // most recent first, as in the stats
   feeds: Feed[] // every feed; the report keeps those of the period
-  baby: Baby
+  baby: BabyInfo
+  growth: EventRecord[] // the baby's measurements, newest first
   period: 7 | 30
   avgIntervalMin: number | null
   onPeriod: (p: 7 | 30) => void
@@ -20,7 +22,7 @@ type Props = {
 
 // Printable summary for a paediatrician visit. It replaces the main view (no overlay: simpler focus and
 // scrolling on iOS); "Print or PDF" uses the browser's print, "Share as text" works where printing doesn't.
-export function Report({ rows, feeds, baby, period, avgIntervalMin, onPeriod, onClose, onShared }: Props) {
+export function Report({ rows, feeds, baby, growth, period, avgIntervalMin, onPeriod, onClose, onShared }: Props) {
   const { t, locale, formatAmount, unitLabel, mlToDisplay } = useFormat()
   const titleRef = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
@@ -34,6 +36,19 @@ export function Report({ rows, feeds, baby, period, avgIntervalMin, onPeriod, on
   const longDate = (ds: string) => parseDay(ds).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
   const shortDate = (ds: string) => parseDay(ds).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })
   const today = todayStr(new Date())
+  // "6,2 kg (P40) · 62 cm (P55)" for the latest measurement, percentiles when birth date and sex are known
+  function latestGrowth(): [string, string] | null {
+    const g = growth[0]
+    if (!g) return null
+    const parts = ([['weight', 'weightKg', 'kg', 2], ['length', 'lengthCm', 'cm', 1], ['head', 'headCm', 'cm', 1]] as const)
+      .filter(([, f]) => Number(g[f]) > 0)
+      .map(([m, f, u, d]) => {
+        const v = Number(g[f])
+        const p = baby.birthDate && baby.sex ? percentile(m, baby.sex, ageMonths(baby.birthDate, g.date), v) : null
+        return v.toLocaleString(locale, { maximumFractionDigits: d }) + ' ' + t(u) + (p !== null ? ` (${t('pct', { p })})` : '')
+      })
+    return [t('reportGrowth', { date: parseDay(g.date).toLocaleDateString(locale, { day: 'numeric', month: 'short' }) }), parts.join(' · ')]
+  }
   const showDiapers = days.some((r) => r.diapers > 0)
   const showSleep = days.some((r) => r.sleepMin > 0)
   const age = baby.birthDate ? formatAge(t, baby.birthDate, today) : null
@@ -51,6 +66,7 @@ export function Report({ rows, feeds, baby, period, avgIntervalMin, onPeriod, on
         [t('statVitd'), s.vitd + '/' + s.days],
         ...(s.breastShare !== null ? [[t('statBreast'), s.breastShare + ' %'] as [string, string]] : []),
         ...(s.diapersPerDay !== null ? [[t('statDiapers'), String(Math.round(s.diapersPerDay * 10) / 10)] as [string, string]] : []),
+        ...(latestGrowth() ? [latestGrowth()!] : []),
         ...(s.sleepPerDay !== null ? [[t('statSleep'), formatHM(s.sleepPerDay) + ' ' + t('hourShort')] as [string, string]] : []),
       ]
     : []

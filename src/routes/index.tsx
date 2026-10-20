@@ -5,6 +5,8 @@ import { BackupReminder } from '#/components/BackupReminder'
 import { BabySettings } from '#/components/BabySettings'
 import { DayNav } from '#/components/DayNav'
 import { Diapers } from '#/components/Diapers'
+import { Growth } from '#/components/Growth'
+import type { GrowthInput } from '#/components/Growth'
 import { Sleep } from '#/components/Sleep'
 import { ongoingSleep, sleepMinutesOn, sleepsOn } from '#/lib/sleep'
 import type { DiaperKind } from '#/components/Diapers'
@@ -369,6 +371,10 @@ function App() {
     return null
   }
 
+  // growth: one record per measurement session (any of weight / length / head)
+  const growth = events.filter((e) => e.type === 'growth').sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : +new Date(b.time) - +new Date(a.time)))
+  const addGrowth = (m: GrowthInput) => { addEvent({ type: 'growth', time: timeOnDate(m.date, nowHHMM()), ...m }) }
+
   // the first baby's vitamin D stays in "daily" (as before); the others' in "days"
   const toggleVitaminD = () => {
     const given = !(dayRecord && dayRecord.vitaminD)
@@ -408,6 +414,7 @@ function App() {
             rows={rows}
             feeds={feeds}
             baby={current}
+            growth={growth}
             period={period}
             avgIntervalMin={periodInterval}
             onPeriod={setPeriod}
@@ -517,6 +524,9 @@ function App() {
           onDelete={(e) => removeEvent(e, t('sleepDeleted'))}
         />
         </> : null}
+        {tab === 'growth' ? (
+          <Growth baby={current} measurements={growth} onAdd={addGrowth} onDelete={(e) => removeEvent(e, t('growthDeleted'))} />
+        ) : null}
         {tab === 'stats' ? <Stats
           rows={rows}
           period={period}
@@ -529,7 +539,7 @@ function App() {
         <Footer shared={!!sharing.code} push={push.enabled} />
         </>}
       </div>
-      <TabBar tabs={['feeds', 'diapers', 'sleep', 'stats']} tab={tab} onTab={setTab} />
+      <TabBar tabs={['feeds', 'diapers', 'sleep', 'growth', 'stats']} tab={tab} onTab={setTab} />
       <Toast toast={toast} onDone={closeToast} />
     </FormatProvider>
   )

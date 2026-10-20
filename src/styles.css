@@ -872,6 +872,20 @@ input[type="time"], input[type="date"], input[type="number"], input[type="text"]
 .sleep-add .care-time { padding-inline-start: 0; margin-bottom: 8px; }
 .care-time { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; padding-inline-start: var(--gutter); color: var(--label-on-bg); }
 
+/* ---------- Growth tab ---------- */
+.growth-card { padding: 12px var(--gutter) 10px; margin-bottom: 24px; }
+.growth-chart svg { width: 100%; height: auto; display: block; }
+.growth-chart .grid { stroke: var(--separator); stroke-width: 0.5; }
+.growth-chart .axis { fill: var(--label-2); font-size: 9px; font-family: var(--font); }
+.growth-chart .curve { fill: none; stroke: var(--label-2); stroke-width: 1; opacity: 0.55; }
+.growth-chart .curve.outer { stroke-dasharray: 3 3; }
+.growth-chart .curve.median { stroke: var(--good); stroke-width: 1.6; opacity: 0.9; }
+.growth-chart .baby-line { fill: none; stroke: var(--tint); stroke-width: 1.6; }
+.growth-chart .baby-point { fill: var(--tint); stroke: var(--surface); stroke-width: 1.5; }
+.growth-row { flex-wrap: wrap; row-gap: 2px; }
+.growth-input { width: 6rem; text-align: end; font-variant-numeric: tabular-nums; }
+.growth-values { display: flex; flex-wrap: wrap; gap: 2px 10px; white-space: normal; }
+
 /* ---------- Tab bar (functional layer: glass), above the home indicator ---------- */
 .tabbar {
   position: fixed;
