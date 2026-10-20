@@ -1,11 +1,38 @@
 import type { ReactNode } from 'react'
-import { isToday, parseDay } from '#/lib/dates'
-import type { Daily } from '#/lib/db'
+import { minimumFor } from '#/lib/baby'
+import type { Baby } from '#/lib/baby'
+import { isToday, parseDay, todayStr } from '#/lib/dates'
+import type { Daily, Feed } from '#/lib/db'
 import { useFormat } from '#/lib/format'
 
 // Per-day aggregates for the selected period, most recent day first. minMl is that day's minimum (it depends on the baby's age).
 // breastMl / typedMl: volumes of the bottles whose milk type was recorded (untyped bottles are left out of the share).
 export type DayRow = { date: string; totalMl: number; count: number; daily: Daily | null; minMl: number; breastMl: number; typedMl: number }
+
+// One row per day of the period, from `now` backwards.
+export function buildRows(feeds: Feed[], daily: Daily[], period: number, now: Date, baby: Baby): DayRow[] {
+  const byDate: Record<string, Feed[]> = {}
+  feeds.forEach((e) => { (byDate[e.date] = byDate[e.date] || []).push(e) })
+  const dailyByDate: Record<string, Daily> = {}
+  daily.forEach((r) => { dailyByDate[r.date] = r })
+  const out: DayRow[] = []
+  for (let i = 0; i < period; i++) {
+    const d = new Date(now)
+    d.setDate(d.getDate() - i)
+    const ds = todayStr(d)
+    const list = byDate[ds] || []
+    out.push({
+      date: ds,
+      totalMl: list.reduce((s, e) => s + e.ml, 0),
+      count: list.length,
+      daily: dailyByDate[ds] || null,
+      minMl: minimumFor(baby, ds),
+      breastMl: list.reduce((s, e) => s + (e.type === 'breast' ? e.ml : 0), 0),
+      typedMl: list.reduce((s, e) => s + (e.type ? e.ml : 0), 0),
+    })
+  }
+  return out
+}
 
 // The single minimum shared by every row, or null when it changes within the period.
 function sharedMin(rows: DayRow[]) {
